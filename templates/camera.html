@@ -647,18 +647,20 @@
 
         // Show video or image in modal
         const mediaEl = document.getElementById("modal-feed-media");
-        if (feed.filename && feed.filename.match(/\.(mp4|webm|mov|avi)$/i)) {
+       
+        if (!feed.filename) {
+            mediaEl.innerHTML = `<p style="color:var(--text-light);font-size:13px;">
+                 📷 General image — file not stored</p>`;
+        } else if (feed.filename.match(/\.(mp4|webm|mov|avi)$/i)) {
             mediaEl.innerHTML = `
                 <video class="feed-media-player" controls>
                     <source src="/static/video_feeds/${feed.filename}">
                 </video>`;
-        } else if (feed.filename) {
+        } else {
             mediaEl.innerHTML = `
                 <img src="/static/video_feeds/${feed.filename}"
                     class="feed-media-player"
                     style="object-fit:contain;">`;
-        } else {
-            mediaEl.innerHTML = "";
         }
 
         const sev = feed.severity || "normal";

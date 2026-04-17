@@ -1000,6 +1000,9 @@ THEIR FARM DATA RIGHT NOW:
 - Milk this week: {farm_context.get('milk_this_week', 'unknown')} litres
 - Milk this month: {farm_context.get('milk_this_month', 'unknown')} litres
 
+RECENT FLAGGED FINDINGS FROM IMAGE/VIDEO ANALYSIS:
+{findings_text}
+
 YOUR ROLE:
 - Answer questions about their farm using the data above
 - Give practical dairy farming advice
@@ -1322,15 +1325,42 @@ Respond ONLY in this JSON format:
         
         result = parse_ai_json(response)
         result["summary"] = result.get("observations")
+        
+        
+        import uuid
+        feed = VideoFeed(
+            user_id          = user_id,
+            cow_id           = None,
+            title            = f"General Image Analysis - {file.filename}",
+            filename         = None,
+            ai_summary       = result.get("observations"),
+            ai_concerns      = result.get("concerns"),
+            ai_recommendation = result.get("recommendation"),
+            severity         = result.get("severity", "normal"),
+            flagged          = result.get("flagged", False)
+        )
+        db.session.add(feed)
+        db.session.commit()
 
         if result.get("flagged"):
-            send_alert_email(
-                "Visual concern detected in uploaded image",
-                result.get("concerns"),
-                result.get("severity", "warning"),
-                user.email,
-                result.get("recommendation")
-            )
+            first_cow = Cow.query.filter_by(user_id=user_id).first()
+            if first_cow:
+                db.session.add(HealthRecord(
+                    cow_id            = first_cow.id,
+                    ai_diagnosis      = result.get("observations"),
+                    ai_recommendation = result.get("recommendation"),
+                    flagged           = True,
+                    notes             = "Flagged via general image analysis"
+                ))
+            db.session.commit()
+            
+        send_alert_email(
+            "Visual concern detected from uploaded image",
+            result.get("concerns"),
+            result.get("severity", "warning"),
+            user.email,
+            result.get("recommendation")
+        )
 
         return jsonify(result), 200
 
