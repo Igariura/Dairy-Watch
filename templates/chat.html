@@ -1,0 +1,716 @@
+{% extends "base.html" %}
+
+{% block title %}AI Assistant — Herdwatch{% endblock %}
+{% block page_title %}AI Farm Assistant{% endblock %}
+
+{% block styles %}
+<style>
+    .chat-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 24px;
+        height: calc(100vh - 140px);
+    }
+
+    /* ── Chat main area ──────────────────────── */
+    .chat-main {
+        display: flex;
+        flex-direction: column;
+        background: var(--white);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .chat-header {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: var(--white);
+    }
+
+    .chat-header-avatar {
+        width: 42px;
+        height: 42px;
+        background: var(--green-light);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .chat-header-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .chat-header-status {
+        font-size: 12px;
+        color: var(--green-dark);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .status-dot {
+        width: 7px;
+        height: 7px;
+        background: var(--green-dark);
+        border-radius: 50%;
+        display: inline-block;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.4; }
+    }
+
+    /* ── Messages area ───────────────────────── */
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        background: var(--cream);
+    }
+
+    .message {
+        display: flex;
+        gap: 10px;
+        max-width: 80%;
+    }
+
+    .message.user {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+    }
+
+    .message.assistant {
+        align-self: flex-start;
+    }
+
+    .message-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .message.user .message-avatar {
+        background: var(--green-dark);
+        color: white;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .message.assistant .message-avatar {
+        background: var(--green-light);
+    }
+
+    .message-bubble {
+        padding: 12px 16px;
+        border-radius: 16px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-dark);
+    }
+
+    .message.user .message-bubble {
+        background: var(--green-dark);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .message-bubble {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    .message-time {
+        font-size: 10px;
+        color: var(--text-light);
+        margin-top: 4px;
+        text-align: right;
+    }
+
+    .message.assistant .message-time {
+        text-align: left;
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+        display: none;
+        align-self: flex-start;
+        gap: 10px;
+    }
+
+    .typing-indicator.visible {
+        display: flex;
+    }
+
+    .typing-dots {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        border-bottom-left-radius: 4px;
+        padding: 14px 18px;
+        display: flex;
+        gap: 5px;
+        align-items: center;
+    }
+
+    .typing-dots span {
+        width: 7px;
+        height: 7px;
+        background: var(--text-light);
+        border-radius: 50%;
+        animation: bounce 1.2s infinite;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+        0%, 60%, 100% { transform: translateY(0);    }
+        30%            { transform: translateY(-6px); }
+    }
+
+    /* ── Chat input ──────────────────────────── */
+    .chat-input-area {
+        padding: 16px 20px;
+        border-top: 1px solid var(--border);
+        background: var(--white);
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: 11px 16px;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        font-size: 14px;
+        font-family: 'Inter', sans-serif;
+        color: var(--text-dark);
+        outline: none;
+        resize: none;
+        max-height: 120px;
+        line-height: 1.5;
+        transition: border 0.2s;
+        background: var(--cream);
+    }
+
+    .chat-input:focus {
+        border-color: var(--green-dark);
+        background: var(--white);
+    }
+
+    .chat-send-btn {
+        width: 42px;
+        height: 42px;
+        background: var(--green-dark);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .chat-send-btn:hover {
+        background: var(--green-mid);
+        transform: scale(1.05);
+    }
+
+    .chat-send-btn:disabled {
+        background: var(--border);
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* ── Sidebar panel ───────────────────────── */
+    .chat-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        overflow-y: auto;
+    }
+
+    .chat-panel {
+        background: var(--white);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        padding: 20px;
+    }
+
+    .chat-panel-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-mid);
+        margin-bottom: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Suggested questions */
+    .suggestion-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 10px 12px;
+        background: var(--cream);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 12px;
+        color: var(--text-mid);
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+        margin-bottom: 8px;
+        transition: all 0.2s;
+        line-height: 1.4;
+    }
+
+    .suggestion-btn:hover {
+        background: var(--green-light);
+        color: var(--green-dark);
+        border-color: var(--green-dark);
+    }
+
+    /* Farm context */
+    .context-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+    }
+
+    .context-item:last-child {
+        border-bottom: none;
+    }
+
+    .context-label {
+        color: var(--text-light);
+    }
+
+    .context-value {
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    /* Clear chat */
+    .btn-clear {
+        width: 100%;
+        padding: 9px;
+        background: var(--cream);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 12px;
+        color: var(--text-mid);
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+    }
+
+    .btn-clear:hover {
+        background: var(--red-light);
+        color: var(--red);
+        border-color: var(--red);
+    }
+
+    /* ── Mobile ──────────────────────────────── */
+    @media (max-width: 768px) {
+        .chat-wrapper {
+            grid-template-columns: 1fr;
+            height: auto;
+        }
+
+        .chat-main {
+            height: calc(100vh - 180px);
+        }
+
+        .chat-sidebar {
+            display: none;
+        }
+
+        .message {
+            max-width: 92%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chat-wrapper">
+
+    <!-- ── Main chat area ────────────────────── -->
+    <div class="chat-main">
+
+        <div class="chat-header">
+            <div class="chat-header-avatar">🤖</div>
+            <div>
+                <div class="chat-header-name">Herdwatch AI Assistant</div>
+                <div class="chat-header-status">
+                    <span class="status-dot"></span>
+                    Online · Knows your farm data
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <!-- Welcome message -->
+            <div class="message assistant">
+                <div class="message-avatar">🤖</div>
+                <div>
+                    <div class="message-bubble">
+                        👋 Hello! I'm your DairyWatch AI assistant. I have
+                        access to your farm data — your cows, health records,
+                        milk production and alerts.<br><br>
+                        Ask me anything about your farm. For example:<br>
+                        • <em>"Which cow has the highest milk production?"</em><br>
+                        • <em>"Are there any sick cows I should check?"</em><br>
+                        • <em>"What does mastitis look like in dairy cows?"</em>
+                    </div>
+                    <div class="message-time">Just now</div>
+                </div>
+            </div>
+
+            <!-- Typing indicator -->
+            <div class="typing-indicator" id="typing-indicator">
+                <div class="message-avatar" style="background:var(--green-light);
+                     width:32px;height:32px;border-radius:10px;display:flex;
+                     align-items:center;justify-content:center;font-size:15px;">
+                    🤖
+                </div>
+                <div class="typing-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <textarea
+                class="chat-input"
+                id="chat-input"
+                placeholder="Ask anything about your farm..."
+                rows="1"
+                onkeydown="handleKey(event)"
+                oninput="autoResize(this)">
+            </textarea>
+            <button class="chat-send-btn" id="send-btn" onclick="sendMessage()">
+                ➤
+            </button>
+        </div>
+
+    </div>
+
+    <!-- ── Sidebar ────────────────────────────── -->
+    <div class="chat-sidebar">
+
+        <!-- Suggested questions -->
+        <div class="chat-panel">
+            <div class="chat-panel-title">💡 Suggested Questions</div>
+            <button class="suggestion-btn"
+                onclick="askSuggestion('Which of my cows has been sick most recently?')">
+                Which cow has been sick most recently?
+            </button>
+            <button class="suggestion-btn"
+                onclick="askSuggestion('How is my milk production trending this week?')">
+                How is my milk production this week?
+            </button>
+            <button class="suggestion-btn"
+                onclick="askSuggestion('How many active alerts do I have and what are they about?')">
+                What are my current alerts?
+            </button>
+            <button class="suggestion-btn"
+                onclick="askSuggestion('What are the signs of mastitis in dairy cows and how do I treat it?')">
+                Signs of mastitis in dairy cows?
+            </button>
+            <button class="suggestion-btn"
+                onclick="askSuggestion('Give me a summary of my entire farm status right now.')">
+                Give me a full farm summary
+            </button>
+            <button class="suggestion-btn"
+                onclick="askSuggestion('Which cow should I be most concerned about right now?')">
+                Which cow needs attention most?
+            </button>
+        </div>
+
+        <!-- Farm context -->
+        <div class="chat-panel">
+            <div class="chat-panel-title">🐄 Your Farm</div>
+            <div class="context-item">
+                <span class="context-label">Total cows</span>
+                <span class="context-value" id="ctx-total">—</span>
+            </div>
+            <div class="context-item">
+                <span class="context-label">Healthy</span>
+                <span class="context-value" id="ctx-healthy"
+                    style="color:var(--green-dark)">—</span>
+            </div>
+            <div class="context-item">
+                <span class="context-label">Sick</span>
+                <span class="context-value" id="ctx-sick"
+                    style="color:var(--red)">—</span>
+            </div>
+            <div class="context-item">
+                <span class="context-label">Active alerts</span>
+                <span class="context-value" id="ctx-alerts"
+                    style="color:var(--amber)">—</span>
+            </div>
+            <div class="context-item">
+                <span class="context-label">Milk today</span>
+                <span class="context-value" id="ctx-milk">—</span>
+            </div>
+        </div>
+
+        <!-- Clear chat -->
+        <div class="chat-panel">
+            <div class="chat-panel-title">⚙️ Options</div>
+            <button class="btn-clear" onclick="clearChat()">
+                🗑 Clear conversation
+            </button>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const currentUserId     = JSON.parse(atob(getToken().split('.')[1])).sub;
+let conversationHistory = JSON.parse(localStorage.getItem(`chat_history_${currentUserId}`) || "[]");
+let farmContext         = {};
+let userInitial         = "?";
+
+// ── Restore chat history on load ──────────
+function restoreChatHistory() {
+    if (conversationHistory.length === 0) return;
+    const container = document.getElementById("chat-messages");
+    const typing    = document.getElementById("typing-indicator");
+
+    conversationHistory.forEach(msg => {
+        const div    = document.createElement("div");
+        div.className = `message ${msg.role}`;
+
+        const avatar = msg.role === "user"
+            ? `<div class="message-avatar">${userInitial}</div>`
+            : `<div class="message-avatar">🤖</div>`;
+
+        div.innerHTML = `
+            ${avatar}
+            <div>
+                <div class="message-bubble">${formatMessage(msg.content)}</div>
+            </div>
+        `;
+        container.insertBefore(div, typing);
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+// ── Load farm context for sidebar and AI ──
+async function loadFarmContext() {
+    try {
+        const [statsRes, alertsRes, milkRes, userRes] = await Promise.all([
+            apiFetch("/api/cows/stats"),
+            apiFetch("/api/alerts/count"),
+            apiFetch("/api/milk/summary"),
+            apiFetch("/api/auth/me")
+        ]);
+
+        const stats  = await statsRes.json();
+        const alerts = await alertsRes.json();
+        const milk   = await milkRes.json();
+        const user   = await userRes.json();
+
+        if (user && user.name) {
+            userInitial = user.name.charAt(0).toUpperCase();
+            // Update avatars in restored messages
+            document.querySelectorAll(".message.user .message-avatar").forEach(a => {
+                a.textContent = userInitial;
+            });
+        }
+
+        if (document.getElementById("ctx-total")) {
+            document.getElementById("ctx-total").textContent   = stats.total   || "—";
+            document.getElementById("ctx-healthy").textContent = stats.healthy || "—";
+            document.getElementById("ctx-sick").textContent    = stats.sick    || "—";
+            document.getElementById("ctx-alerts").textContent  =
+                (alerts.critical || 0) + (alerts.warning || 0);
+            document.getElementById("ctx-milk").textContent    =
+                (milk.today || 0) + "L";
+        }
+
+        farmContext = {
+            total_cows:      stats.total      || 0,
+            healthy_cows:    stats.healthy    || 0,
+            sick_cows:       stats.sick       || 0,
+            pregnant_cows:   stats.pregnant   || 0,
+            critical_alerts: alerts.critical  || 0,
+            warning_alerts:  alerts.warning   || 0,
+            milk_today:      milk.today       || 0,
+            milk_this_week:  milk.this_week   || 0,
+            milk_this_month: milk.this_month  || 0,
+            farmer_name:     user.name        || "Farmer"
+        };
+
+    } catch (err) {
+        console.error("Failed to load farm context:", err);
+    }
+}
+
+// ── Send message ──────────────────────────
+async function sendMessage() {
+    const input   = document.getElementById("chat-input");
+    const message = input.value.trim();
+    if (!message) return;
+
+    input.value = "";
+    autoResize(input);
+
+    appendMessage("user", message);
+    conversationHistory.push({ role: "user", content: message });
+  localStorage.setItem(`chat_history_${currentUserId}`, JSON.stringify(conversationHistory));
+
+    showTyping(true);
+    disableSend(true);
+
+    try {
+        const res = await apiFetch("/api/chat", {
+            method: "POST",
+            body: JSON.stringify({
+                message,
+                history:      conversationHistory,
+                farm_context: farmContext
+            })
+        });
+
+        const data  = await res.json();
+        const reply = data.reply;
+
+        conversationHistory.push({ role: "assistant", content: reply });
+       localStorage.setItem(`chat_history_${currentUserId}`, JSON.stringify(conversationHistory));
+
+        showTyping(false);
+        appendMessage("assistant", reply);
+
+    } catch (err) {
+        showTyping(false);
+        appendMessage("assistant",
+            "Sorry, I'm having trouble connecting right now. Please try again.");
+    }
+
+    disableSend(false);
+}
+
+// ── Append message to chat ────────────────
+function appendMessage(role, text) {
+    const container = document.getElementById("chat-messages");
+    const typing    = document.getElementById("typing-indicator");
+
+    const div = document.createElement("div");
+    div.className = `message ${role}`;
+
+    const avatar = role === "user"
+        ? `<div class="message-avatar">${userInitial}</div>`
+        : `<div class="message-avatar">🤖</div>`;
+
+    const now = new Date().toLocaleTimeString("en-KE", {
+        hour: "2-digit", minute: "2-digit"
+    });
+
+    div.innerHTML = `
+        ${avatar}
+        <div>
+            <div class="message-bubble">${formatMessage(text)}</div>
+            <div class="message-time">${now}</div>
+        </div>
+    `;
+
+    container.insertBefore(div, typing);
+    container.scrollTop = container.scrollHeight;
+}
+
+// ── Format message text ───────────────────
+function formatMessage(text) {
+    return text
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.*?)\*/g, "<em>$1</em>")
+        .replace(/\n/g, "<br>");
+}
+
+// ── Typing indicator ──────────────────────
+function showTyping(show) {
+    const indicator = document.getElementById("typing-indicator");
+    const container = document.getElementById("chat-messages");
+    indicator.classList.toggle("visible", show);
+    if (show) container.scrollTop = container.scrollHeight;
+}
+
+// ── Disable send button ───────────────────
+function disableSend(disabled) {
+    document.getElementById("send-btn").disabled = disabled;
+}
+
+// ── Handle Enter key ──────────────────────
+function handleKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+}
+
+// ── Auto resize textarea ──────────────────
+function autoResize(el) {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+}
+
+// ── Suggestion buttons ────────────────────
+function askSuggestion(question) {
+    document.getElementById("chat-input").value = question;
+    sendMessage();
+}
+
+// ── Clear chat ────────────────────────────
+function clearChat() {
+    if (!confirm("Clear the entire conversation?")) return;
+    conversationHistory = [];
+    localStorage.removeItem(`chat_history_${currentUserId}`);
+
+    const container   = document.getElementById("chat-messages");
+    const allMessages = container.querySelectorAll(".message");
+    allMessages.forEach((m, i) => {
+        if (i > 0) m.remove();
+    });
+}
+
+// ── Init ──────────────────────────────────
+restoreChatHistory();
+loadFarmContext();
+</script>
+{% endblock %}

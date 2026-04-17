@@ -1,0 +1,732 @@
+{% extends "base.html" %}
+
+{% block title %}Media Analysis — Herdwatch{% endblock %}
+{% block page_title %}Media Analysis{% endblock %}
+
+{% block styles %}
+<style>
+    .media-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 24px;
+    }
+
+    .media-main {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* ── Preview area ────────────────────────── */
+    .preview-card {
+        background: #000;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        aspect-ratio: 16/9;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .preview-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        color: rgba(255,255,255,0.4);
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+
+    .preview-placeholder:hover {
+        background: rgba(255,255,255,0.05);
+    }
+
+    .preview-placeholder .preview-icon { font-size: 52px; }
+
+    .preview-placeholder p {
+        font-size: 15px;
+        font-weight: 500;
+    }
+
+    .preview-placeholder span {
+        font-size: 12px;
+        color: rgba(255,255,255,0.25);
+    }
+
+    #preview-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: none;
+    }
+
+    #preview-video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: none;
+    }
+
+    .analyzing-overlay {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.8);
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 14px;
+        color: white;
+    }
+
+    .analyzing-overlay.visible { display: flex; }
+
+    .analyzing-spinner {
+        width: 44px;
+        height: 44px;
+        border: 3px solid rgba(255,255,255,0.2);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Upload controls card ────────────────── */
+    .controls-card {
+        background: var(--white);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        padding: 24px;
+    }
+
+    .controls-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 16px;
+    }
+
+    .controls-card .form-group label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-mid);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .controls-card input,
+    .controls-card select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        font-family: 'Inter', sans-serif;
+        color: var(--text-dark);
+        background: var(--white);
+        outline: none;
+        transition: border 0.2s;
+    }
+
+    .controls-card input:focus,
+    .controls-card select:focus {
+        border-color: var(--green-dark);
+    }
+
+    .upload-btn-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .btn-upload-media {
+        flex: 1;
+        padding: 11px;
+        background: var(--cream);
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-mid);
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+        text-align: center;
+    }
+
+    .btn-upload-media:hover {
+        border-color: var(--green-dark);
+        color: var(--green-dark);
+        background: var(--green-light);
+    }
+
+    .btn-upload-media.has-file {
+        border-style: solid;
+        border-color: var(--green-dark);
+        background: var(--green-light);
+        color: var(--green-dark);
+    }
+
+    /* ── AI result card ──────────────────────── */
+    .ai-result-card {
+        background: var(--white);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        padding: 24px;
+        display: none;
+    }
+
+    .ai-result-card.visible { display: block; }
+
+    .ai-result-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 16px;
+    }
+
+    .ai-section {
+        padding: 12px 16px;
+        border-radius: var(--radius-sm);
+        margin-bottom: 12px;
+        border-left: 4px solid var(--green-dark);
+        background: var(--green-light);
+    }
+
+    .ai-section.warning {
+        border-left-color: var(--amber);
+        background: var(--amber-light);
+    }
+
+    .ai-section.critical {
+        border-left-color: var(--red);
+        background: var(--red-light);
+    }
+
+    .ai-section-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-mid);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .ai-section-text {
+        font-size: 13px;
+        color: var(--text-dark);
+        line-height: 1.6;
+    }
+
+    /* ── Saved feeds sidebar ─────────────────── */
+    .feeds-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .feeds-panel {
+        background: var(--white);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        padding: 20px;
+        max-height: calc(100vh - 140px);
+        overflow-y: auto;
+    }
+
+    .feeds-panel-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .feed-item {
+        padding: 12px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .feed-item:hover {
+        border-color: var(--green-dark);
+        background: var(--green-light);
+    }
+
+    .feed-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 6px;
+    }
+
+    .feed-item-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .feed-item-time {
+        font-size: 11px;
+        color: var(--text-light);
+        white-space: nowrap;
+        margin-left: 8px;
+    }
+
+    .feed-item-summary {
+        font-size: 12px;
+        color: var(--text-mid);
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .feed-item-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .btn-delete-feed {
+        background: none;
+        border: none;
+        color: var(--text-light);
+        cursor: pointer;
+        font-size: 13px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .btn-delete-feed:hover {
+        background: var(--red-light);
+        color: var(--red);
+    }
+
+    /* ── Feed detail modal ───────────────────── */
+    .feed-modal { max-width: 640px; }
+
+    .feed-media-player {
+        width: 100%;
+        border-radius: var(--radius-sm);
+        margin-bottom: 16px;
+        background: #000;
+        max-height: 360px;
+        object-fit: contain;
+    }
+
+    @media (max-width: 768px) {
+        .media-wrapper { grid-template-columns: 1fr; }
+        .controls-row  { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="media-wrapper">
+
+    <!-- ── Left: Preview + Controls ──────────── -->
+    <div class="media-main">
+
+        <!-- Preview area -->
+        <div class="preview-card" id="preview-card"
+            onclick="document.getElementById('media-file-input').click()">
+
+            <div class="preview-placeholder" id="preview-placeholder">
+                <div class="preview-icon">📁</div>
+                <p>Click to select a photo or video</p>
+                <span>JPG, PNG, MP4, MOV — up to 50MB</span>
+            </div>
+
+            <img  id="preview-image" alt="Preview">
+            <video id="preview-video" controls></video>
+
+            <div class="analyzing-overlay" id="analyzing-overlay">
+                <div class="analyzing-spinner"></div>
+                <div style="font-size:14px;font-weight:600;">AI is analyzing...</div>
+                <div style="font-size:12px;opacity:0.7;">This may take a few seconds</div>
+            </div>
+        </div>
+
+        <input type="file" id="media-file-input"
+            accept="image/*,video/*"
+            style="display:none"
+            onchange="handleFileSelect(this)">
+
+        <!-- Controls -->
+        <div class="controls-card">
+            <div class="controls-row">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="upload-title"
+                        placeholder="e.g. Morning shed check">
+                </div>
+                <div class="form-group">
+                    <label>Cow (optional)</label>
+                    <select id="upload-cow-select">
+                        <option value="">🐄 General farm feed</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="upload-btn-row">
+                <button class="btn-upload-media" id="btn-select-file"
+                    onclick="document.getElementById('media-file-input').click()">
+                    📁 Select Photo / Video
+                </button>
+                <button class="btn btn-primary" id="btn-analyze"
+                    onclick="analyzeMedia()" disabled
+                    style="padding: 11px 24px;">
+                    🤖 Analyze
+                </button>
+            </div>
+        </div>
+
+        <!-- AI Result -->
+        <div class="ai-result-card" id="ai-result-card">
+            <div class="ai-result-title">🤖 AI Analysis Report</div>
+            <div id="ai-result-content"></div>
+        </div>
+
+    </div>
+
+    <!-- ── Right: Saved feeds ─────────────────── -->
+    <div class="feeds-sidebar">
+        <div class="feeds-panel">
+            <div class="feeds-panel-title">
+                <span>📹 Saved Feeds</span>
+                <span id="feeds-count"
+                    style="font-size:12px;color:var(--text-light);font-weight:400;">
+                </span>
+            </div>
+            <div id="feeds-list">
+                <div class="empty-state">
+                    <div class="empty-icon">📹</div>
+                    <p>No media analyzed yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Feed detail modal ──────────────────────── -->
+<div class="modal-overlay" id="modal-feed">
+    <div class="modal feed-modal">
+        <div class="modal-title" id="modal-feed-title">Feed Details</div>
+        <div id="modal-feed-media"></div>
+        <div id="modal-feed-analysis"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('modal-feed')">Close</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedFile     = null;
+    let selectedFileType = null;
+
+    // ── Handle file select ────────────────────
+    function handleFileSelect(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        selectedFile     = file;
+        selectedFileType = file.type.startsWith("video/") ? "video" : "image";
+
+        // Show preview
+        const placeholder  = document.getElementById("preview-placeholder");
+        const previewImg   = document.getElementById("preview-image");
+        const previewVideo = document.getElementById("preview-video");
+        const previewCard  = document.getElementById("preview-card");
+
+        placeholder.style.display  = "none";
+        previewImg.style.display   = "none";
+        previewVideo.style.display = "none";
+
+        // Stop preview card from triggering file input when clicking video controls
+        previewCard.onclick = null;
+
+        const objectUrl = URL.createObjectURL(file);
+
+        if (selectedFileType === "image") {
+            previewImg.src           = objectUrl;
+            previewImg.style.display = "block";
+        } else {
+            previewVideo.src           = objectUrl;
+            previewVideo.style.display = "block";
+        }
+
+        // Update select button
+        const btn = document.getElementById("btn-select-file");
+        btn.textContent = `${selectedFileType === "video" ? "🎥" : "📷"} ${file.name}`;
+        btn.classList.add("has-file");
+
+        // Enable analyze button
+        document.getElementById("btn-analyze").disabled = false;
+
+        // Reset previous result
+        document.getElementById("ai-result-card").classList.remove("visible");
+    }
+
+    // ── Analyze selected media ────────────────
+    function analyzeMedia() {
+        if (!selectedFile) return;
+
+        const title = document.getElementById("upload-title").value.trim()
+            || `Upload ${new Date().toLocaleString("en-KE")}`;
+        const cowId = document.getElementById("upload-cow-select").value;
+
+        const formData = new FormData();
+        formData.append("title", title);
+        if (cowId) formData.append("cow_id", cowId);
+        formData.append("file", selectedFile, selectedFile.name);
+
+        // Show feedback message
+        const btn = document.getElementById("btn-analyze");
+        const originalText = btn.textContent;
+        btn.textContent = "✅ Uploaded! Analyzing...";
+        setTimeout(() => { btn.textContent = originalText; }, 2000);
+
+        // Fire and forget - analysis happens in background
+        (async () => {
+            try {
+                let res, data;
+
+                if (selectedFileType === "video") {
+                    res  = await fetch("/api/video-feeds", {
+                        method:  "POST",
+                        headers: { "Authorization": "Bearer " + getToken() },
+                        body:    formData
+                    });
+                    data = await res.json();
+                    if (res.ok) {
+                        showResult(data.result);
+                        loadFeeds();
+                    } else {
+                        console.error("Analysis failed:", data.error);
+                    }
+
+                } else {
+                    // Image
+                    const endpoint = cowId
+                        ? `/api/analyze/image/${cowId}`
+                        : `/api/analyze/general-image`;
+
+                    res  = await fetch(endpoint, {
+                        method:  "POST",
+                        headers: { "Authorization": "Bearer " + getToken() },
+                        body:    formData
+                    });
+                    data = await res.json();
+                    if (res.ok) {
+                        showResult(data);
+                        loadFeeds();
+                    } else {
+                        console.error("Analysis failed:", data.error);
+                    }
+                }
+
+            } catch (err) {
+                console.error("Upload failed:", err.message);
+            }
+        })();
+    }
+
+    // ── Show AI result ────────────────────────
+    function showResult(result) {
+        const card    = document.getElementById("ai-result-card");
+        const content = document.getElementById("ai-result-content");
+        const sev     = result.severity || "normal";
+
+        card.classList.add("visible");
+        content.innerHTML = `
+            <div class="ai-section ${sev === "normal" ? "" : sev}">
+                <div class="ai-section-label">📋 Summary</div>
+                <div class="ai-section-text">
+                    ${result.summary || result.observations || "—"}
+                </div>
+            </div>
+            ${result.concerns && result.concerns !== "none" ? `
+            <div class="ai-section ${sev}">
+                <div class="ai-section-label">⚠️ Concerns</div>
+                <div class="ai-section-text">${result.concerns}</div>
+            </div>` : `
+            <div class="ai-section">
+                <div class="ai-section-label">✅ Concerns</div>
+                <div class="ai-section-text">No concerns detected</div>
+            </div>`}
+            <div class="ai-section">
+                <div class="ai-section-label">💊 Recommendation</div>
+                <div class="ai-section-text">${result.recommendation || "—"}</div>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+                <span class="badge badge-${sev === "normal" ? "healthy" : sev}">
+                    ${sev.toUpperCase()}
+                </span>
+                ${result.frames_analyzed ? `
+                <span style="font-size:12px;color:var(--text-light);">
+                    ${result.frames_analyzed} frames analyzed
+                </span>` : ""}
+            </div>
+        `;
+
+        card.scrollIntoView({ behavior: "smooth" });
+    }
+
+    // ── Load saved feeds ──────────────────────
+    async function loadFeeds() {
+        const res   = await apiFetch("/api/video-feeds");
+        const feeds = await res.json();
+        const list  = document.getElementById("feeds-list");
+        const count = document.getElementById("feeds-count");
+
+        count.textContent = `${feeds.length} saved`;
+
+        if (!feeds.length) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📹</div>
+                    <p>No media analyzed yet</p>
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = feeds.map(f => `
+            <div class="feed-item" onclick="openFeed(${f.id})">
+                <div class="feed-item-header">
+                    <div class="feed-item-title">${f.title}</div>
+                    <div class="feed-item-time">${timeAgo(f.recorded_at)}</div>
+                </div>
+                <div class="feed-item-summary">${f.ai_summary || "No summary"}</div>
+                <div class="feed-item-footer">
+                    <span class="badge badge-${f.severity === "normal" ? "healthy" : f.severity}">
+                        ${f.severity}
+                    </span>
+                    <button class="btn-delete-feed"
+                        onclick="event.stopPropagation(); deleteFeed(${f.id})">
+                        🗑
+                    </button>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    // ── Open feed detail modal ────────────────
+    async function openFeed(feedId) {
+        const res   = await apiFetch("/api/video-feeds");
+        const feeds = await res.json();
+        const feed  = feeds.find(f => f.id === feedId);
+        if (!feed) return;
+
+        document.getElementById("modal-feed-title").textContent = feed.title;
+
+        // Show video or image in modal
+        const mediaEl = document.getElementById("modal-feed-media");
+        if (feed.filename && feed.filename.match(/\.(mp4|webm|mov|avi)$/i)) {
+            mediaEl.innerHTML = `
+                <video class="feed-media-player" controls>
+                    <source src="/static/video_feeds/${feed.filename}">
+                </video>`;
+        } else if (feed.filename) {
+            mediaEl.innerHTML = `
+                <img src="/static/video_feeds/${feed.filename}"
+                    class="feed-media-player"
+                    style="object-fit:contain;">`;
+        } else {
+            mediaEl.innerHTML = "";
+        }
+
+        const sev = feed.severity || "normal";
+        document.getElementById("modal-feed-analysis").innerHTML = `
+            <div class="ai-section ${sev === "normal" ? "" : sev}"
+                style="margin-bottom:10px;">
+                <div class="ai-section-label">📋 Summary</div>
+                <div class="ai-section-text">${feed.ai_summary || "—"}</div>
+            </div>
+            ${feed.ai_concerns && feed.ai_concerns !== "none" ? `
+            <div class="ai-section ${sev}" style="margin-bottom:10px;">
+                <div class="ai-section-label">⚠️ Concerns</div>
+                <div class="ai-section-text">${feed.ai_concerns}</div>
+            </div>` : ""}
+            <div class="ai-section" style="margin-bottom:10px;">
+                <div class="ai-section-label">💊 Recommendation</div>
+                <div class="ai-section-text">${feed.ai_recommendation || "—"}</div>
+            </div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+                <span class="badge badge-${sev === "normal" ? "healthy" : sev}">
+                    ${sev.toUpperCase()}
+                </span>
+                <span style="font-size:11px;color:var(--text-light);">
+                    ${formatDate(feed.recorded_at)}
+                </span>
+            </div>
+        `;
+
+        document.getElementById("modal-feed").classList.add("open");
+    }
+
+    // ── Delete feed ───────────────────────────
+    async function deleteFeed(feedId) {
+        if (!confirm("Delete this recording?")) return;
+        const res = await apiFetch(`/api/video-feeds/${feedId}`, { method: "DELETE" });
+        if (res.ok) loadFeeds();
+        else alert("Failed to delete");
+    }
+
+    // ── Modal helpers ─────────────────────────
+    function closeModal(id) {
+        document.getElementById(id).classList.remove("open");
+        if (id === "modal-feed") {
+            document.getElementById("modal-feed-media").innerHTML = "";
+        }
+    }
+
+    document.querySelectorAll(".modal-overlay").forEach(overlay => {
+        overlay.addEventListener("click", function(e) {
+            if (e.target === this) closeModal(this.id);
+        });
+    });
+
+    // ── Load cows into select ─────────────────
+    async function loadCows() {
+        const res  = await apiFetch("/api/cows");
+        const cows = await res.json();
+        const sel  = document.getElementById("upload-cow-select");
+        cows.forEach(cow => {
+            const opt       = document.createElement("option");
+            opt.value       = cow.id;
+            opt.textContent = `🐄 ${cow.name || cow.tag_number}`;
+            sel.appendChild(opt);
+        });
+    }
+
+    // ── Init ──────────────────────────────────
+    loadFeeds();
+    loadCows();
+</script>
+{% endblock %}

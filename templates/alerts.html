@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+
+{% block title %}Alerts — Herdwatch{% endblock %}
+{% block page_title %}Alerts{% endblock %}
+
+{% block styles %}
+<style>
+    .alerts-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .filter-tab {
+        padding: 7px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1.5px solid var(--border);
+        background: var(--white);
+        color: var(--text-mid);
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+    }
+
+    .filter-tab.active {
+        background: var(--green-dark);
+        color: white;
+        border-color: var(--green-dark);
+    }
+
+    .filter-tab.critical.active {
+        background: var(--red);
+        border-color: var(--red);
+    }
+
+    .filter-tab.warning.active {
+        background: var(--amber);
+        border-color: var(--amber);
+    }
+
+    .alerts-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .alert-card {
+        background: var(--white);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        border-left: 5px solid var(--border);
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        transition: box-shadow 0.2s;
+    }
+
+    .alert-card:hover {
+        box-shadow: var(--shadow-hover);
+    }
+
+    .alert-card.critical { border-left-color: var(--red);   }
+    .alert-card.warning  { border-left-color: var(--amber); }
+    .alert-card.info     { border-left-color: var(--blue);  }
+
+    .alert-card-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .alert-card-icon.critical { background: var(--red-light);   }
+    .alert-card-icon.warning  { background: var(--amber-light); }
+    .alert-card-icon.info     { background: var(--blue-light);  }
+
+    .alert-card-body {
+        flex: 1;
+    }
+
+    .alert-card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 4px;
+    }
+
+    .alert-card-message {
+        font-size: 13px;
+        color: var(--text-mid);
+        line-height: 1.5;
+        margin-bottom: 8px;
+    }
+
+    .alert-card-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .alert-card-time {
+        font-size: 11px;
+        color: var(--text-light);
+    }
+
+    .alert-card-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .btn-resolve {
+        padding: 6px 14px;
+        background: var(--green-light);
+        color: var(--green-dark);
+        border: 1px solid var(--green-dark);
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .btn-resolve:hover {
+        background: var(--green-dark);
+        color: white;
+    }
+
+    .resolved-badge {
+        padding: 4px 10px;
+        background: var(--green-light);
+        color: var(--green-dark);
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .alert-stat {
+        background: var(--white);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .alert-stat-icon {
+        font-size: 24px;
+    }
+
+    .alert-stat-value {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--text-dark);
+        line-height: 1;
+    }
+
+    .alert-stat-label {
+        font-size: 11px;
+        color: var(--text-light);
+        margin-top: 3px;
+        font-weight: 500;
+    }
+
+    @media (max-width: 480px) {
+        .stats-row {
+            grid-template-columns: 1fr;
+        }
+
+        .alert-card {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .alert-card-actions {
+            flex-direction: row;
+            align-items: center;
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Alert stats ────────────────────────────── -->
+<div class="stats-row">
+    <div class="alert-stat">
+        <div class="alert-stat-icon">🔴</div>
+        <div>
+            <div class="alert-stat-value" id="count-critical">—</div>
+            <div class="alert-stat-label">Critical</div>
+        </div>
+    </div>
+    <div class="alert-stat">
+        <div class="alert-stat-icon">🟡</div>
+        <div>
+            <div class="alert-stat-value" id="count-warning">—</div>
+            <div class="alert-stat-label">Warnings</div>
+        </div>
+    </div>
+    <div class="alert-stat">
+        <div class="alert-stat-icon">✅</div>
+        <div>
+            <div class="alert-stat-value" id="count-resolved">—</div>
+            <div class="alert-stat-label">Resolved Today</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Filters and actions ───────────────────── -->
+<div class="alerts-header">
+    <div class="filter-tabs">
+        <button class="filter-tab active"    onclick="filterAlerts('all', this)">All</button>
+        <button class="filter-tab critical"  onclick="filterAlerts('critical', this)">🔴 Critical</button>
+        <button class="filter-tab warning"   onclick="filterAlerts('warning', this)">🟡 Warning</button>
+        <button class="filter-tab"           onclick="filterAlerts('resolved', this)">✅ Resolved</button>
+    </div>
+    <button class="btn btn-secondary" onclick="resolveAll()">Resolve All</button>
+</div>
+
+<!-- ── Alerts list ───────────────────────────── -->
+<div class="alerts-grid" id="alerts-grid">
+    <div style="text-align:center; padding:48px; color:var(--text-light);">
+        Loading alerts...
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allAlerts    = [];
+    let activeFilter = "all";
+
+    const icons = {
+        critical: "🚨",
+        warning:  "⚠️",
+        info:     "ℹ️"
+    };
+
+    // ── Load alerts ───────────────────────────
+    async function loadAlerts() {
+        const [activeRes, resolvedRes] = await Promise.all([
+            apiFetch("/api/alerts"),
+            apiFetch("/api/alerts?resolved=true")
+        ]);
+
+        const active   = await activeRes.json();
+        const resolved = await resolvedRes.json();
+
+        allAlerts = [
+            ...active,
+            ...resolved.map(a => ({ ...a, _resolved: true }))
+        ];
+
+        updateCounts(active, resolved);
+        renderAlerts();
+    }
+
+    function updateCounts(active, resolved) {
+        const critical = active.filter(a => a.severity === "critical").length;
+        const warning  = active.filter(a => a.severity === "warning").length;
+
+        // Count resolved today
+        const today = new Date().toDateString();
+        const resolvedToday = resolved.filter(a =>
+            new Date(a.created_at).toDateString() === today
+        ).length;
+
+        document.getElementById("count-critical").textContent = critical;
+        document.getElementById("count-warning").textContent  = warning;
+        document.getElementById("count-resolved").textContent = resolvedToday;
+    }
+
+    // ── Render alerts ─────────────────────────
+    function renderAlerts() {
+        const grid = document.getElementById("alerts-grid");
+        let filtered = allAlerts;
+
+        if (activeFilter === "resolved") {
+            filtered = allAlerts.filter(a => a._resolved);
+        } else if (activeFilter === "critical") {
+            filtered = allAlerts.filter(a => !a._resolved && a.severity === "critical");
+        } else if (activeFilter === "warning") {
+            filtered = allAlerts.filter(a => !a._resolved && a.severity === "warning");
+        } else {
+            filtered = allAlerts.filter(a => !a._resolved);
+        }
+
+        if (!filtered.length) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">✅</div>
+                    <p>${activeFilter === "resolved"
+                        ? "No resolved alerts found"
+                        : "No active alerts — your herd is doing well!"
+                    }</p>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = filtered.map(a => `
+            <div class="alert-card ${a.severity}" id="alert-card-${a.id}">
+                <div class="alert-card-icon ${a.severity}">
+                    ${icons[a.severity] || "🔔"}
+                </div>
+                <div class="alert-card-body">
+                    <div class="alert-card-title">${a.title}</div>
+                    <div class="alert-card-message">${a.message}</div>
+                    <div class="alert-card-meta">
+                        <span class="badge badge-${a.severity}">${a.severity}</span>
+                        <span class="alert-card-time">
+                            ${a.type} · ${timeAgo(a.created_at)}
+                        </span>
+                    </div>
+                </div>
+                <div class="alert-card-actions">
+                    ${a._resolved
+                        ? `<span class="resolved-badge">✓ Resolved</span>`
+                        : `<button class="btn-resolve" onclick="resolveAlert(${a.id})">
+                               Resolve
+                           </button>`
+                    }
+                </div>
+            </div>
+        `).join("");
+    }
+
+    // ── Filter tabs ───────────────────────────
+    function filterAlerts(filter, btn) {
+        activeFilter = filter;
+        document.querySelectorAll(".filter-tab").forEach(t =>
+            t.classList.remove("active")
+        );
+        btn.classList.add("active");
+        renderAlerts();
+    }
+
+    // ── Resolve single alert ──────────────────
+    async function resolveAlert(alertId) {
+        const res = await apiFetch(`/api/alerts/${alertId}/resolve`, {
+            method: "PATCH"
+        });
+
+        if (res.ok) {
+            // Mark as resolved in local array without refetching
+            const alert = allAlerts.find(a => a.id === alertId);
+            if (alert) alert._resolved = true;
+            renderAlerts();
+            updateBadgeCounts();
+        } else {
+            alert("Failed to resolve alert");
+        }
+    }
+
+    // ── Resolve all visible alerts ────────────
+    async function resolveAll() {
+        const unresolved = allAlerts.filter(a => !a._resolved);
+        if (!unresolved.length) return;
+
+        if (!confirm(`Resolve all ${unresolved.length} active alerts?`)) return;
+
+        await Promise.all(
+            unresolved.map(a =>
+                apiFetch(`/api/alerts/${a.id}/resolve`, { method: "PATCH" })
+            )
+        );
+
+        allAlerts.forEach(a => a._resolved = true);
+        renderAlerts();
+        updateBadgeCounts();
+    }
+
+    // ── Update sidebar badge after resolve ────
+    function updateBadgeCounts() {
+        const remaining = allAlerts.filter(a => !a._resolved).length;
+        const badge = document.getElementById("alert-badge");
+        if (remaining > 0) {
+            badge.textContent    = remaining;
+            badge.style.display  = "inline";
+        } else {
+            badge.style.display  = "none";
+        }
+    }
+
+    // ── Init ──────────────────────────────────
+    loadAlerts();
+</script>
+{% endblock %}

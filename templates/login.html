@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+
+{% block title %}Login — Herdwatch{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block styles %}
+<style>
+    /* Hide sidebar and topbar on login page */
+    .sidebar,
+    .topbar,
+    .sidebar-overlay {
+        display: none !important;
+    }
+
+    .main-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .main-content {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: linear-gradient(135deg, #1a6b3c 0%, #2d8653 50%, #1a6b3c 100%);
+    }
+
+    .login-wrapper {
+        display: flex;
+        width: 100%;
+        max-width: 900px;
+        background: white;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+        min-height: 520px;
+    }
+
+    /* Left decorative panel */
+    .login-left {
+        flex: 1;
+        background: linear-gradient(160deg, #1a6b3c, #2d8653);
+        padding: 48px 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        color: white;
+    }
+
+    .login-left-brand {
+        font-size: 22px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .login-left-tagline {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.3;
+        margin-bottom: 16px;
+    }
+
+    .login-left-sub {
+        font-size: 14px;
+        color: rgba(255,255,255,0.7);
+        line-height: 1.7;
+    }
+
+    .login-feature {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.85);
+        margin-bottom: 12px;
+    }
+
+    .login-feature-icon {
+        width: 32px;
+        height: 32px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+
+    /* Right form panel */
+    .login-right {
+        flex: 1;
+        padding: 48px 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .login-right h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 6px;
+    }
+
+    .login-right p {
+        font-size: 13px;
+        color: var(--text-light);
+        margin-bottom: 28px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-mid);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: 'Inter', sans-serif;
+        color: var(--text-dark);
+        outline: none;
+        transition: border 0.2s;
+        background: var(--cream);
+    }
+
+    .form-group input:focus {
+        border-color: var(--green-dark);
+        background: white;
+    }
+
+    .btn-login {
+        width: 100%;
+        padding: 12px;
+        background: var(--green-dark);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-family: 'Inter', sans-serif;
+        margin-top: 4px;
+    }
+
+    .btn-login:hover {
+        background: var(--green-mid);
+    }
+
+    .toggle-link {
+        text-align: center;
+        margin-top: 16px;
+        font-size: 13px;
+        color: var(--text-light);
+    }
+
+    .toggle-link span {
+        color: var(--green-dark);
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .toggle-link span:hover {
+        text-decoration: underline;
+    }
+
+    .error-msg {
+        background: var(--red-light);
+        color: var(--red);
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        margin-bottom: 16px;
+        display: none;
+        border: 1px solid rgba(214,64,69,0.2);
+    }
+
+    .divider {
+        text-align: center;
+        font-size: 11px;
+        color: var(--text-light);
+        margin: 6px 0 16px;
+    }
+
+    /* Mobile: stack the two panels */
+    @media (max-width: 640px) {
+        .login-left {
+            display: none;
+        }
+
+        .login-right {
+            padding: 36px 24px;
+        }
+
+        .login-wrapper {
+            border-radius: 16px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+
+    <!-- Left panel -->
+    <div class="login-left">
+        <div class="login-left-brand">
+            🐄 Herdwatch
+        </div>
+
+        <div>
+            <div class="login-left-tagline">
+                Smart monitoring for your dairy farm
+            </div>
+            <div class="login-left-sub">
+                Track your herd's health, milk production and get AI-powered insights — all in one place.
+            </div>
+        </div>
+
+        <div>
+            <div class="login-feature">
+                <div class="login-feature-icon">🩺</div>
+                AI health analysis for every cow
+            </div>
+            <div class="login-feature">
+                <div class="login-feature-icon">🥛</div>
+                Milk production tracking and alerts
+            </div>
+            <div class="login-feature">
+                <div class="login-feature-icon">🔔</div>
+                Real-time alerts when something is wrong
+            </div>
+            <div class="login-feature">
+                <div class="login-feature-icon">📊</div>
+                Farm reports and trend analysis
+            </div>
+        </div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="login-right">
+
+        <div id="error-msg" class="error-msg"></div>
+
+        <!-- Login form -->
+        <div id="login-form">
+            <h2>Welcome back 👋</h2>
+            <p>Sign in to your Herdwatch account</p>
+
+            <div class="form-group">
+                <label>Email address</label>
+                <input type="email" id="login-email" placeholder="you@farm.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-password" placeholder="••••••••"
+                    onkeydown="if(event.key==='Enter') login()">
+            </div>
+
+            <button class="btn-login" onclick="login()">Sign In</button>
+
+            <div class="toggle-link">
+                No account yet? <span onclick="showRegister()">Create one free</span>
+            </div>
+        </div>
+
+        <!-- Register form -->
+        <div id="register-form" style="display:none">
+            <h2>Create account 🌱</h2>
+            <p>Start monitoring your farm today</p>
+
+            <div class="form-group">
+                <label>Full name</label>
+                <input type="text" id="reg-name" placeholder="John Kamau">
+            </div>
+            <div class="form-group">
+                <label>Email address</label>
+                <input type="email" id="reg-email" placeholder="you@farm.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="reg-password" placeholder="••••••••"
+                    onkeydown="if(event.key==='Enter') register()">
+            </div>
+
+            <button class="btn-login" onclick="register()">Create Account</button>
+
+            <div class="toggle-link">
+                Already have an account? <span onclick="showLogin()">Sign in</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Already logged in — go straight to dashboard
+    if (getToken()) {
+        window.location.href = "/dashboard";
+    }
+
+    function showError(msg) {
+        const el = document.getElementById("error-msg");
+        el.textContent = msg;
+        el.style.display = "block";
+    }
+
+    function hideError() {
+        document.getElementById("error-msg").style.display = "none";
+    }
+
+    function showRegister() {
+        hideError();
+        document.getElementById("login-form").style.display    = "none";
+        document.getElementById("register-form").style.display = "block";
+    }
+
+    function showLogin() {
+        hideError();
+        document.getElementById("register-form").style.display = "none";
+        document.getElementById("login-form").style.display    = "block";
+    }
+
+    async function login() {
+    hideError();
+    const email    = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+
+    if (!email || !password) {
+        showError("Please enter your email and password");
+        return;
+    }
+
+    const res  = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    
+    console.log("Status:", res.status);
+    console.log("Response:", data);
+    console.log("Token:", data.token);
+
+    if (res.ok) {
+        localStorage.setItem("token", data.token);
+        console.log("Token saved:", localStorage.getItem("token"));
+        window.location.href = "/dashboard";
+    } else {
+        showError(data.error || "Login failed. Please try again.");
+    }
+}
+
+    async function register() {
+        hideError();
+        const name     = document.getElementById("reg-name").value.trim();
+        const email    = document.getElementById("reg-email").value.trim();
+        const password = document.getElementById("reg-password").value;
+
+        if (!name || !email || !password) {
+            showError("Please fill in all fields");
+            return;
+        }
+
+        if (password.length < 6) {
+            showError("Password must be at least 6 characters");
+            return;
+        }
+
+        const res  = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            localStorage.setItem("token", data.token);
+            window.location.href = "/dashboard";
+        } else {
+            showError(data.error || "Registration failed. Please try again.");
+        }
+    }
+</script>
+{% endblock %}

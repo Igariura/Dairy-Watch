@@ -1,0 +1,785 @@
+{% extends "base.html" %}
+
+{% block title %}Cows — Herdwatch{% endblock %}
+{% block page_title %}Herd Management{% endblock %}
+
+{% block styles %}
+<style>
+    .page-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .search-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        max-width: 340px;
+    }
+
+    .search-bar input {
+        width: 100%;
+        padding: 9px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: 'Inter', sans-serif;
+        outline: none;
+        background: var(--white);
+        color: var(--text-dark);
+        transition: border 0.2s;
+    }
+
+    .search-bar input:focus {
+        border-color: var(--green-dark);
+    }
+
+    .cow-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    .cow-card {
+        background: var(--white);
+        border-radius: var(--radius);
+        padding: 20px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        transition: box-shadow 0.2s, transform 0.2s;
+        cursor: pointer;
+    }
+
+    .cow-card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
+    }
+
+    .cow-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 14px;
+    }
+
+    .cow-avatar {
+        width: 48px;
+        height: 48px;
+        background: var(--green-light);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+    }
+
+    .cow-card-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 2px;
+    }
+
+    .cow-card-tag {
+        font-size: 11px;
+        color: var(--text-light);
+    }
+
+    .cow-card-detail {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--text-mid);
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+    }
+
+    .cow-card-detail span {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .cow-card-detail strong {
+        font-size: 13px;
+        color: var(--text-dark);
+        font-weight: 600;
+    }
+
+    .cow-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .cow-actions button {
+        flex: 1;
+        padding: 7px;
+        border-radius: 7px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: var(--cream);
+        color: var(--text-mid);
+        font-family: 'Inter', sans-serif;
+        transition: all 0.2s;
+    }
+
+    .cow-actions button:hover {
+        background: var(--green-light);
+        color: var(--green-dark);
+        border-color: var(--green-dark);
+    }
+
+    .cow-actions button.danger:hover {
+        background: var(--red-light);
+        color: var(--red);
+        border-color: var(--red);
+    }
+
+    /* Health log form inside modal */
+    .checkbox-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 6px;
+    }
+
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--text-mid);
+        cursor: pointer;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--green-dark);
+        cursor: pointer;
+    }
+
+    /* Milk log form */
+    .session-selector {
+        display: flex;
+        gap: 10px;
+        margin-top: 6px;
+    }
+
+    .session-btn {
+        flex: 1;
+        padding: 9px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: 'Inter', sans-serif;
+        cursor: pointer;
+        background: var(--cream);
+        color: var(--text-mid);
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+    .session-btn.selected {
+        border-color: var(--green-dark);
+        background: var(--green-light);
+        color: var(--green-dark);
+    }
+
+    .ai-result-box {
+        background: var(--green-light);
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--green-dark);
+        border-radius: var(--radius-sm);
+        padding: 14px;
+        margin-top: 16px;
+        display: none;
+    }
+
+    .ai-result-box.warning {
+        background: var(--amber-light);
+        border-left-color: var(--amber);
+    }
+
+    .ai-result-box.critical {
+        background: var(--red-light);
+        border-left-color: var(--red);
+    }
+
+    .ai-result-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 6px;
+    }
+
+    .ai-result-text {
+        font-size: 12px;
+        color: var(--text-mid);
+        line-height: 1.6;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 12px;
+        font-size: 13px;
+        color: var(--text-light);
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .cow-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .cow-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .upload-area {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-sm);
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--cream);
+    }
+
+    .upload-area:hover {
+        border-color: var(--green-dark);
+        background: var(--green-light);
+    }
+
+    .upload-icon {
+        font-size: 28px;
+        margin-bottom: 8px;
+    }
+
+    .upload-text {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-mid);
+        margin-bottom: 4px;
+    }
+
+    .upload-sub {
+        font-size: 11px;
+        color: var(--text-light);
+    }
+
+    .upload-preview {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: var(--green-light);
+        border-radius: var(--radius-sm);
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--green-dark);
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Page actions ──────────────────────────── -->
+<div class="page-actions">
+    <div class="search-bar">
+        <input type="text" id="search-input"
+            placeholder="🔍  Search by name or tag..."
+            oninput="filterCows()">
+    </div>
+    <button class="btn btn-primary" onclick="openAddCow()">+ Add Cow</button>
+</div>
+
+<!-- ── Cow grid ──────────────────────────────── -->
+<div class="cow-grid" id="cow-grid">
+    <div style="grid-column:1/-1; text-align:center; padding:48px; color:var(--text-light);">
+        Loading herd...
+    </div>
+</div>
+
+
+<!-- ══ ADD COW MODAL ════════════════════════════ -->
+<div class="modal-overlay" id="modal-add-cow">
+    <div class="modal">
+        <div class="modal-title">🐄 Add New Cow</div>
+
+        <div class="form-group">
+            <label>Tag Number *</label>
+            <input type="text" id="add-tag" placeholder="e.g. KE-001">
+        </div>
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="add-name" placeholder="e.g. Daisy">
+        </div>
+        <div class="form-group">
+            <label>Breed</label>
+            <input type="text" id="add-breed" placeholder="e.g. Friesian">
+        </div>
+        <div class="form-group">
+            <label>Date of Birth</label>
+            <input type="date" id="add-dob">
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select id="add-status">
+                <option value="healthy">Healthy</option>
+                <option value="sick">Sick</option>
+                <option value="pregnant">Pregnant</option>
+            </select>
+        </div>
+       <div class="form-group">
+            <label>Notes</label>
+            <textarea id="health-notes" rows="2"
+                placeholder="Describe what you observed..."
+                style="resize:vertical;"></textarea>
+        </div>
+
+        <!-- ── Media upload ───────────────────── -->
+        <div class="form-group">
+            <label>Upload Photo or Video (optional)</label>
+            <div class="upload-area" id="upload-area"
+                onclick="document.getElementById('media-file').click()">
+                <div class="upload-icon">📷</div>
+                <div class="upload-text">
+                    Tap to upload a photo or video of the cow
+                </div>
+                <div class="upload-sub">
+                    JPG, PNG, MP4, MOV up to 50MB
+                </div>
+            </div>
+            <input type="file" id="media-file"
+                accept="image/*,video/*"
+                style="display:none"
+                onchange="handleMediaSelect(this)">
+            <div class="upload-preview" id="upload-preview"
+                style="display:none">
+                <span id="upload-filename"></span>
+                <button onclick="clearMedia()"
+                    style="background:none;border:none;
+                    color:var(--red);cursor:pointer;
+                    font-size:16px;">✕</button>
+            </div>
+        </div>
+
+      <div class="loading-spinner" id="add-cow-loading" style="display:none;">
+    🔄 Saving...
+       </div>
+
+       <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeModal('modal-add-cow')">Cancel</button>
+         <button class="btn btn-primary" onclick="submitAddCow()">Add Cow</button>
+    </div>
+    </div>
+</div>
+
+
+<!-- ══ LOG HEALTH MODAL ══════════════════════════ -->
+<div class="modal-overlay" id="modal-health">
+    <div class="modal">
+        <div class="modal-title">🩺 Log Health Record</div>
+        <input type="hidden" id="health-cow-id">
+
+        <div class="form-group">
+            <label>Temperature (°C)</label>
+            <input type="number" id="health-temp" placeholder="Normal: 38.0 – 39.5"
+                step="0.1" min="35" max="43">
+        </div>
+
+        <div class="form-group">
+            <label>Behavioral Signs</label>
+            <div class="checkbox-group">
+                <label class="checkbox-item">
+                    <input type="checkbox" id="health-limping"> Limping
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" id="health-lethargic"> Lethargic
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" id="health-not-eating"> Not eating
+                </label>
+                <label class="checkbox-item">
+                    <input type="checkbox" id="health-posture"> Abnormal posture
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea id="health-notes" rows="2"
+                placeholder="Describe what you observed..."
+                style="resize:vertical;"></textarea>
+        </div>
+
+        <div class="loading-spinner" id="health-loading">
+            🤖 AI is analyzing... please wait
+        </div>
+
+        <div class="ai-result-box" id="ai-result">
+            <div class="ai-result-title">🤖 AI Analysis</div>
+            <div class="ai-result-text" id="ai-result-text"></div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('modal-health')">Cancel</button>
+            <button class="btn btn-primary" id="health-submit-btn" onclick="submitHealth()">
+                Analyze & Save
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ══ LOG MILK MODAL ════════════════════════════ -->
+<div class="modal-overlay" id="modal-milk">
+    <div class="modal">
+        <div class="modal-title">🥛 Log Milk Production</div>
+        <input type="hidden" id="milk-cow-id">
+
+        <div class="form-group">
+            <label>Session</label>
+            <div class="session-selector">
+                <button class="session-btn selected" onclick="selectSession('morning', this)">
+                    🌅 Morning
+                </button>
+                <button class="session-btn" onclick="selectSession('noon', this)">
+                    ☀️ Noon
+                </button>
+                <button class="session-btn" onclick="selectSession('evening', this)">
+                    🌙 Evening
+                </button>
+            </div>
+            <input type="hidden" id="milk-session" value="morning">
+        </div>
+
+        <div class="form-group">
+            <label>Yield (Litres)</label>
+            <input type="number" id="milk-yield" placeholder="e.g. 12.5"
+                step="0.1" min="0">
+        </div>
+
+        <div class="form-group">
+            <label>Quality Grade</label>
+            <select id="milk-grade">
+                <option value="">— Select grade —</option>
+                <option value="A">Grade A</option>
+                <option value="B">Grade B</option>
+                <option value="C">Grade C</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea id="milk-notes" rows="2"
+                placeholder="Any observations..."
+                style="resize:vertical;"></textarea>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('modal-milk')">Cancel</button>
+            <button class="btn btn-primary" onclick="submitMilk()">Save Record</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allCows         = [];
+    let selectedSession = "morning";
+    let selectedMedia   = null;
+    let mediaType       = null;
+
+    // ── Load all cows ─────────────────────────
+    async function loadCows() {
+        const res = await apiFetch("/api/cows");
+        allCows   = await res.json();
+        renderCows(allCows);
+    }
+
+    function renderCows(cows) {
+        const grid = document.getElementById("cow-grid");
+
+        if (!cows.length) {
+            grid.innerHTML = `
+                <div class="empty-state" style="grid-column:1/-1">
+                    <div class="empty-icon">🐄</div>
+                    <p>No cows added yet. Click <strong>Add Cow</strong> to get started.</p>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = cows.map(cow => `
+            <div class="cow-card">
+                <div class="cow-card-header">
+                    <div class="cow-avatar">🐄</div>
+                    <span class="badge badge-${cow.status}">${cow.status}</span>
+                </div>
+                <div class="cow-card-name">${cow.name || "Unnamed"}</div>
+                <div class="cow-card-tag">Tag: ${cow.tag_number}</div>
+                <div class="cow-card-detail">
+                    <span>Breed<strong>${cow.breed || "—"}</strong></span>
+                    <span>Added<strong>${formatDate(cow.created_at)}</strong></span>
+                </div>
+                <div class="cow-actions">
+                    <button onclick="openHealth(${cow.id}, '${cow.name || cow.tag_number}')">🩺 Health</button>
+                    <button onclick="openMilk(${cow.id}, '${cow.name || cow.tag_number}')">🥛 Milk</button>
+                    <button class="danger" onclick="deleteCow(${cow.id}, '${cow.tag_number}')">🗑</button>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    // ── Search filter ─────────────────────────
+    function filterCows() {
+        const q = document.getElementById("search-input").value.toLowerCase();
+        const filtered = allCows.filter(c =>
+            (c.name || "").toLowerCase().includes(q) ||
+            c.tag_number.toLowerCase().includes(q)
+        );
+        renderCows(filtered);
+    }
+
+    // ── Modal helpers ─────────────────────────
+    function openModal(id) {
+        document.getElementById(id).classList.add("open");
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove("open");
+        if (id === "modal-health") {
+            document.getElementById("ai-result").style.display       = "none";
+            document.getElementById("health-loading").style.display  = "none";
+            document.getElementById("health-submit-btn").disabled    = false;
+            document.getElementById("health-submit-btn").textContent = "Analyze & Save";
+            clearMedia();
+        }
+    }
+
+    // ── Add cow ───────────────────────────────
+    function openAddCow() {
+        openModal("modal-add-cow");
+    }
+
+    async function submitAddCow() {
+        const tag = document.getElementById("add-tag").value.trim();
+        if (!tag) { alert("Tag number is required"); return; }
+
+        const res = await apiFetch("/api/cows", {
+            method: "POST",
+            body: JSON.stringify({
+                tag_number:    tag,
+                name:          document.getElementById("add-name").value.trim(),
+                breed:         document.getElementById("add-breed").value.trim(),
+                date_of_birth: document.getElementById("add-dob").value || null,
+                status:        document.getElementById("add-status").value,
+                notes:         document.getElementById("health-notes").value.trim()
+            })
+        });
+
+        if (res.ok) {
+            closeModal("modal-add-cow");
+            loadCows();
+        } else {
+            const data = await res.json();
+            alert(data.error || "Failed to add cow");
+        }
+    }
+
+    // ── Health log ────────────────────────────
+    function openHealth(cowId, cowName) {
+        document.getElementById("health-cow-id").value = cowId;
+        document.querySelector("#modal-health .modal-title").textContent =
+            `🩺 Health Record — ${cowName}`;
+        openModal("modal-health");
+    }
+
+    async function submitHealth() {
+        const cowId   = document.getElementById("health-cow-id").value;
+        const btn     = document.getElementById("health-submit-btn");
+        const spinner = document.getElementById("health-loading");
+
+        btn.disabled          = true;
+        spinner.style.display = "block";
+
+        let mediaResult = null;
+
+        if (selectedMedia) {
+            btn.textContent = mediaType === "video" ? "Extracting frames..." : "Analyzing image...";
+
+            const formData = new FormData();
+            formData.append("file", selectedMedia);
+
+            const endpoint = mediaType === "video"
+                ? `/api/analyze/video/${cowId}`
+                : `/api/analyze/image/${cowId}`;
+
+            try {
+                const mediaRes = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Authorization": "Bearer " + getToken() },
+                    body: formData
+                });
+                mediaResult = await mediaRes.json();
+            } catch (err) {
+                console.error("Media analysis failed:", err);
+            }
+        }
+
+        btn.textContent = "Analyzing...";
+
+        const healthRes = await apiFetch(`/api/health/${cowId}`, {
+            method: "POST",
+            body: JSON.stringify({
+                temperature:      parseFloat(document.getElementById("health-temp").value) || null,
+                is_limping:       document.getElementById("health-limping").checked,
+                is_lethargic:     document.getElementById("health-lethargic").checked,
+                is_not_eating:    document.getElementById("health-not-eating").checked,
+                abnormal_posture: document.getElementById("health-posture").checked,
+                notes:            document.getElementById("health-notes").value.trim()
+            })
+        });
+
+        spinner.style.display = "none";
+
+        if (healthRes.ok) {
+            const healthData = await healthRes.json();
+            const resultBox  = document.getElementById("ai-result");
+            const resultTxt  = document.getElementById("ai-result-text");
+            const ai         = healthData.ai_analysis;
+
+            resultBox.className     = `ai-result-box ${ai.severity || "normal"}`;
+            resultBox.style.display = "block";
+
+            let html = "";
+            if (mediaResult && mediaResult.observations) {
+                html += `<strong>📷 Visual Analysis:</strong> ${mediaResult.observations}<br><br>`;
+                if (mediaResult.concerns && mediaResult.concerns !== "none") {
+                    html += `<strong>⚠️ Visual Concerns:</strong> ${mediaResult.concerns}<br><br>`;
+                }
+            }
+            html += `<strong>🩺 Diagnosis:</strong> ${ai.diagnosis}<br><br>`;
+            html += `<strong>💊 Recommendation:</strong> ${ai.recommendation}`;
+
+            if (mediaResult && mediaResult.frames_analyzed) {
+                html += `<br><br><em style="color:var(--text-light)">Video: ${mediaResult.frames_analyzed} frames analyzed</em>`;
+            }
+
+            resultTxt.innerHTML = html;
+            btn.textContent     = "Saved ✓";
+            clearMedia();
+            loadCows();
+
+        } else {
+            btn.disabled    = false;
+            btn.textContent = "Analyze & Save";
+            alert("Failed to save health record");
+        }
+    }
+
+    // ── Media upload helpers ──────────────────
+    function handleMediaSelect(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        selectedMedia = file;
+        mediaType     = file.type.startsWith("video/") ? "video" : "image";
+
+        document.getElementById("upload-filename").textContent =
+            `${mediaType === "video" ? "🎥" : "📷"} ${file.name}`;
+        document.getElementById("upload-preview").style.display = "flex";
+        document.getElementById("upload-area").style.display    = "none";
+    }
+
+    function clearMedia() {
+        selectedMedia = null;
+        mediaType     = null;
+        document.getElementById("media-file").value             = "";
+        document.getElementById("upload-preview").style.display = "none";
+        document.getElementById("upload-area").style.display    = "block";
+    }
+
+    // ── Milk log ──────────────────────────────
+    function openMilk(cowId, cowName) {
+        document.getElementById("milk-cow-id").value = cowId;
+        document.querySelector("#modal-milk .modal-title").textContent =
+            `🥛 Milk Record — ${cowName}`;
+        openModal("modal-milk");
+    }
+
+    function selectSession(session, btn) {
+        selectedSession = session;
+        document.getElementById("milk-session").value = session;
+        document.querySelectorAll(".session-btn").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+    }
+
+    async function submitMilk() {
+        const cowId  = document.getElementById("milk-cow-id").value;
+        const yield_ = parseFloat(document.getElementById("milk-yield").value);
+
+        if (!yield_ || yield_ <= 0) {
+            alert("Please enter a valid yield amount");
+            return;
+        }
+
+        const res = await apiFetch(`/api/milk/${cowId}`, {
+            method: "POST",
+            body: JSON.stringify({
+                session:       selectedSession,
+                yield_litres:  yield_,
+                quality_grade: document.getElementById("milk-grade").value || null,
+                notes:         document.getElementById("milk-notes").value.trim()
+            })
+        });
+
+        if (res.ok) {
+            closeModal("modal-milk");
+            alert("Milk record saved ✓");
+        } else {
+            alert("Failed to save milk record");
+        }
+    }
+
+    // ── Delete cow ────────────────────────────
+    async function deleteCow(cowId, tag) {
+        if (!confirm(`Remove cow ${tag} from the system? This cannot be undone.`)) return;
+
+        const res = await apiFetch(`/api/cows/${cowId}`, { method: "DELETE" });
+
+        if (res.ok) {
+            loadCows();
+        } else {
+            alert("Failed to delete cow");
+        }
+    }
+
+    // ── Close modal on overlay click ──────────
+    document.querySelectorAll(".modal-overlay").forEach(overlay => {
+        overlay.addEventListener("click", function(e) {
+            if (e.target === this) closeModal(this.id);
+        });
+    });
+
+    // ── Init ──────────────────────────────────
+    loadCows();
+</script>
+{% endblock %}

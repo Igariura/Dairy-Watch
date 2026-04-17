@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Herdwatch{% endblock %}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --green-dark:   #1a6b3c;
+            --green-mid:    #2d8653;
+            --green-light:  #e8f5ee;
+            --amber:        #e8a020;
+            --amber-light:  #fef3e2;
+            --red:          #d64045;
+            --red-light:    #fdecea;
+            --blue:         #2d6a9f;
+            --blue-light:   #e8f0fb;
+            --cream:        #f9f6f0;
+            --white:        #ffffff;
+            --text-dark:    #1e2d24;
+            --text-mid:     #4a5568;
+            --text-light:   #8a9ba8;
+            --border:       #e2e8e4;
+            --shadow:       0 2px 12px rgba(0,0,0,0.07);
+            --shadow-hover: 0 6px 24px rgba(0,0,0,0.12);
+            --radius:       12px;
+            --radius-sm:    8px;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            background: var(--cream);
+            color: var(--text-dark);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: var(--green-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+        }
+
+        .sidebar-brand {
+            padding: 28px 24px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-brand .brand-icon {
+            font-size: 28px;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .sidebar-brand .brand-name {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .sidebar-brand .brand-tagline {
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+            flex: 1;
+        }
+
+        .nav-label {
+            color: rgba(255,255,255,0.35);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            padding: 0 24px;
+            margin: 16px 0 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 24px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.08);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: rgba(255,255,255,0.12);
+            color: white;
+            border-left-color: var(--amber);
+        }
+
+        .nav-item .nav-icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 20px 24px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .user-avatar {
+            width: 34px;
+            height: 34px;
+            background: var(--green-mid);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .user-name {
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .user-role {
+            color: rgba(255,255,255,0.45);
+            font-size: 11px;
+        }
+
+        .btn-logout {
+            width: 100%;
+            padding: 9px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.7);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.15);
+            color: white;
+        }
+
+        .main-wrapper {
+            margin-left: 240px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .topbar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .topbar-date {
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        .main-content {
+            padding: 32px;
+            flex: 1;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            border: 1px solid var(--border);
+            transition: box-shadow 0.2s;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 22px 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-hover);
+        }
+
+        .stat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .stat-icon.green  { background: var(--green-light); }
+        .stat-icon.amber  { background: var(--amber-light); }
+        .stat-icon.red    { background: var(--red-light);   }
+        .stat-icon.blue   { background: var(--blue-light);  }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-dark);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-healthy  { background: var(--green-light); color: var(--green-dark); }
+        .badge-sick     { background: var(--red-light);   color: var(--red);        }
+        .badge-pregnant { background: var(--blue-light);  color: var(--blue);       }
+        .badge-critical { background: var(--red-light);   color: var(--red);        }
+        .badge-warning  { background: var(--amber-light); color: var(--amber);      }
+        .badge-info     { background: var(--blue-light);  color: var(--blue);       }
+
+        .btn {
+            padding: 9px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--green-dark);
+            color: white;
+        }
+
+        .btn-primary:hover { background: var(--green-mid); }
+
+        .btn-secondary {
+            background: var(--cream);
+            color: var(--text-dark);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover { background: var(--border); }
+
+        .btn-danger {
+            background: var(--red-light);
+            color: var(--red);
+        }
+
+        .btn-danger:hover {
+            background: var(--red);
+            color: white;
+        }
+
+        .table-wrap { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 10px 16px;
+            background: var(--cream);
+            color: var(--text-light);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover { background: var(--cream); }
+
+        tbody td {
+            padding: 12px 16px;
+            color: var(--text-mid);
+        }
+
+        .form-group { margin-bottom: 16px; }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-mid);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dark);
+            background: var(--white);
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: var(--green-dark);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 32px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .modal-title {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .alert-item.critical { border-left: 4px solid var(--red);   background: var(--red-light);   }
+        .alert-item.warning  { border-left: 4px solid var(--amber); background: var(--amber-light); }
+        .alert-item.info     { border-left: 4px solid var(--blue);  background: var(--blue-light);  }
+
+        .alert-icon  { font-size: 18px; margin-top: 1px; }
+        .alert-title { font-size: 13px; font-weight: 600; color: var(--text-dark); }
+        .alert-message { font-size: 12px; color: var(--text-mid); margin-top: 2px; }
+        .alert-time  { font-size: 11px; color: var(--text-light); margin-top: 4px; }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-light);
+        }
+
+        .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; }
+
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 22px;
+            height: 2px;
+            background: var(--text-dark);
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 99;
+        }
+
+        .sidebar-overlay.open { display: block; }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 100;
+            }
+
+            .sidebar.open { transform: translateX(0); }
+
+            .main-wrapper { margin-left: 0; }
+
+            .hamburger { display: flex; }
+
+            .topbar {
+                padding: 14px 16px;
+                gap: 12px;
+            }
+
+            .topbar-title { font-size: 15px; }
+            .topbar-date  { display: none; }
+
+            .main-content { padding: 16px; }
+
+            .grid-4 { grid-template-columns: 1fr 1fr; }
+            .grid-2 { grid-template-columns: 1fr; }
+
+            .table-wrap {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .modal {
+                max-width: 100%;
+                margin: 16px;
+                padding: 24px 20px;
+            }
+
+            .stat-card  { padding: 16px; }
+            .stat-value { font-size: 22px; }
+            .stat-icon  { width: 42px; height: 42px; font-size: 18px; }
+        }
+
+        @media (max-width: 480px) {
+            .grid-4 { grid-template-columns: 1fr; }
+        }
+    </style>
+
+    <!-- ── Global JS — available to all pages ── -->
+    <script>
+        function getToken() {
+            return localStorage.getItem("token");
+        }
+
+        function logout() {
+            localStorage.removeItem("token");
+            window.location.href = "/";
+        }
+
+        function formatDate(str) {
+            return new Date(str).toLocaleDateString("en-KE", {
+                day: "numeric", month: "short", year: "numeric"
+            });
+        }
+
+        function timeAgo(str) {
+            const diff = (Date.now() - new Date(str)) / 1000;
+            if (diff < 60)    return "just now";
+            if (diff < 3600)  return Math.floor(diff / 60)   + "m ago";
+            if (diff < 86400) return Math.floor(diff / 3600)  + "h ago";
+            return Math.floor(diff / 86400) + "d ago";
+        }
+
+        async function apiFetch(url, options = {}) {
+            const token = getToken();
+
+            const headers = {
+                "Content-Type": "application/json",
+                ...(options.headers || {})
+            };
+
+            if (token) {
+                headers["Authorization"] = "Bearer " + token;
+            }
+
+            const res = await fetch(url, {
+                ...options,
+                headers:     headers,
+                credentials: "include"
+            });
+
+           if (res.status === 401) {
+               console.warn("401 on:", url);
+            // temporarily not redirecting so we can debug
+            }
+
+            if (res.status === 422) {
+                console.warn("Auth error on " + url + ": 422");
+            }
+
+            return res;
+        }
+    </script>
+
+    {% block styles %}{% endblock %}
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-icon">🐄</span>
+            <div class="brand-name">Herdwatch</div>
+            <div class="brand-tagline">Farm Monitoring System</div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-label">Main</div>
+            <a href="/dashboard" class="nav-item {% if active == 'dashboard' %}active{% endif %}">
+                <span class="nav-icon">📊</span> Dashboard
+            </a>
+            <a href="/cows" class="nav-item {% if active == 'cows' %}active{% endif %}">
+                <span class="nav-icon">🐄</span> Cows
+            </a>
+            <a href="/alerts" class="nav-item {% if active == 'alerts' %}active{% endif %}">
+                <span class="nav-icon">🔔</span> Alerts
+                <span id="alert-badge" style="margin-left:auto; background:var(--red);
+                    color:white; font-size:10px; padding:2px 7px;
+                    border-radius:10px; display:none;"></span>
+            </a>
+            <a href="/chat" class="nav-item {% if active == 'chat' %}active{% endif %}">
+                <span class="nav-icon">🤖</span> AI Assistant
+            </a>
+
+            <a href="/camera" class="nav-item {% if active == 'camera' %}active{% endif %}">
+            <span class="nav-icon">📹</span> Camera
+            </a>
+
+            <div class="nav-label">Records</div>
+            <a href="/cows" class="nav-item">
+                <span class="nav-icon">🩺</span> Health Logs
+            </a>
+            <a href="/cows" class="nav-item">
+                <span class="nav-icon">🥛</span> Milk Records
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">?</div>
+                <div>
+                    <div class="user-name" id="user-name">Loading...</div>
+                    <div class="user-role" id="user-role"></div>
+                </div>
+            </div>
+            <button class="btn-logout" onclick="logout()">Sign out</button>
+        </div>
+    </aside>
+
+    <!-- Main wrapper -->
+    <div class="main-wrapper">
+        <div class="topbar">
+            <button class="hamburger" onclick="toggleSidebar()" aria-label="Open menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+            <div class="topbar-date" id="topbar-date"></div>
+        </div>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        // ── Redirect if not logged in ─────────────
+        if (!getToken() && window.location.pathname !== "/" && window.location.pathname !== "/login") {
+            window.location.href = "/login";
+        }
+
+        // ── Topbar date ───────────────────────────
+        const dateEl = document.getElementById("topbar-date");
+        if (dateEl) {
+            dateEl.textContent = new Date().toLocaleDateString("en-KE", {
+                weekday: "long", day: "numeric",
+                month: "long", year: "numeric"
+            });
+        }
+
+        // ── Load user info and alert count ────────
+        const protectedPages = ["/dashboard", "/cows", "/alerts", "/chat", "/camera"];
+        const isProtected    = protectedPages.some(p =>
+            window.location.pathname.startsWith(p)
+        );
+
+        if (getToken() && isProtected) {
+            apiFetch("/api/auth/me")
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.name) {
+                        document.getElementById("user-name").textContent  = data.name;
+                        document.getElementById("user-role").textContent  = data.role;
+                        document.getElementById("user-avatar").textContent =
+                            data.name.charAt(0).toUpperCase();
+                    }
+                })
+                .catch(() => {});
+
+            apiFetch("/api/alerts/count")
+                .then(r => r.json())
+                .then(data => {
+                    const total = (data.critical || 0) + (data.warning || 0);
+                    const badge = document.getElementById("alert-badge");
+                    if (badge && total > 0) {
+                        badge.textContent   = total;
+                        badge.style.display = "inline";
+                    }
+                })
+                .catch(() => {});
+        }
+
+        // ── Mobile sidebar ────────────────────────
+        function toggleSidebar() {
+            document.querySelector(".sidebar").classList.toggle("open");
+            document.getElementById("sidebar-overlay").classList.toggle("open");
+        }
+
+        function closeSidebar() {
+            document.querySelector(".sidebar").classList.remove("open");
+            document.getElementById("sidebar-overlay").classList.remove("open");
+        }
+
+        document.querySelectorAll(".nav-item").forEach(item => {
+            item.addEventListener("click", closeSidebar);
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

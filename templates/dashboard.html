@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Herdwatch{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block styles %}
+<style>
+    .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-mid);
+        margin-bottom: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 220px;
+    }
+
+    .cow-row-name {
+        font-weight: 500;
+        color: var(--text-dark);
+    }
+
+    .cow-row-tag {
+        font-size: 11px;
+        color: var(--text-light);
+    }
+
+    .ai-box {
+        background: var(--green-light);
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--green-dark);
+        border-radius: var(--radius-sm);
+        padding: 14px 16px;
+        margin-bottom: 10px;
+    }
+
+    .ai-box-cow {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--green-dark);
+        margin-bottom: 4px;
+    }
+
+    .ai-box-text {
+        font-size: 12px;
+        color: var(--text-mid);
+        line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Stat cards ───────────────────────────── -->
+<div class="grid-4" style="margin-bottom: 28px;">
+    <div class="stat-card">
+        <div class="stat-icon green">🐄</div>
+        <div>
+            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-label">Total Cows</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div>
+            <div class="stat-value" id="stat-healthy">—</div>
+            <div class="stat-label">Healthy</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red">🤒</div>
+        <div>
+            <div class="stat-value" id="stat-sick">—</div>
+            <div class="stat-label">Sick</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon amber">🥛</div>
+        <div>
+            <div class="stat-value" id="stat-milk">—</div>
+            <div class="stat-label">Litres Today</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Middle row ───────────────────────────── -->
+<div class="grid-2 dashboard-grid" style="margin-bottom: 28px;">
+
+    <!-- Milk production chart -->
+    <div class="card">
+        <div class="card-title">🥛 Milk Production — Last 7 Days</div>
+        <div class="chart-container">
+            <canvas id="milkChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Active alerts -->
+    <div class="card">
+        <div class="card-title">🔔 Active Alerts</div>
+        <div id="alerts-list">
+            <div class="empty-state">
+                <div class="empty-icon">✅</div>
+                <p>No active alerts</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Bottom row ────────────────────────────── -->
+<div class="grid-2 dashboard-grid">
+
+    <!-- Recent cows -->
+    <div class="card">
+        <div class="section-title">
+            <span>🐄 Your Herd</span>
+            <a href="/cows" style="font-size:12px; color:var(--green-dark); text-decoration:none;">View all →</a>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cow</th>
+                        <th>Breed</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="cows-table-body">
+                    <tr><td colspan="3" style="text-align:center; color:var(--text-light); padding:24px;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- AI insights -->
+    <div class="card">
+        <div class="section-title">
+            <span>🤖 Recent AI Insights</span>
+        </div>
+        <div id="ai-insights-list">
+            <div class="empty-state">
+                <div class="empty-icon">🤖</div>
+                <p>No health records yet</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ── Load herd stats ───────────────────────
+    async function loadStats() {
+        const res = await apiFetch("/api/cows/stats");
+        const data = await res.json();
+        document.getElementById("stat-total").textContent   = data.total;
+        document.getElementById("stat-healthy").textContent = data.healthy;
+        document.getElementById("stat-sick").textContent    = data.sick;
+    }
+
+    // ── Load milk summary ─────────────────────
+    async function loadMilkSummary() {
+        const res = await apiFetch("/api/milk/summary");
+        const data = await res.json();
+        document.getElementById("stat-milk").textContent = data.today + "L";
+    }
+
+    // ── Load milk chart ───────────────────────
+    async function loadMilkChart() {
+        const res = await apiFetch("/api/dashboard/milk-chart");
+        const data = await res.json();
+
+        new Chart(document.getElementById("milkChart"), {
+            type: "bar",
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: "Litres",
+                    data: data.values,
+                    backgroundColor: "rgba(26, 107, 60, 0.15)",
+                    borderColor: "#1a6b3c",
+                    borderWidth: 2,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: "rgba(0,0,0,0.04)" },
+                        ticks: { font: { size: 11 } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── Load alerts ───────────────────────────
+    async function loadAlerts() {
+        const res = await apiFetch("/api/alerts");
+        const alerts = await res.json();
+        const el = document.getElementById("alerts-list");
+
+        if (!alerts.length) return;
+
+        const icons = { critical: "🔴", warning: "🟡", info: "🔵" };
+
+        el.innerHTML = alerts.slice(0, 4).map(a => `
+            <div class="alert-item ${a.severity}">
+                <div class="alert-icon">${icons[a.severity] || "🔔"}</div>
+                <div>
+                    <div class="alert-title">${a.title}</div>
+                    <div class="alert-message">${a.message}</div>
+                    <div class="alert-time">${timeAgo(a.created_at)}</div>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    // ── Load cows table ───────────────────────
+    async function loadCows() {
+        const res = await apiFetch("/api/cows");
+        const cows = await res.json();
+        const tbody = document.getElementById("cows-table-body");
+
+        if (!cows.length) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-light); padding:24px;">No cows added yet</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = cows.slice(0, 6).map(c => `
+            <tr>
+                <td>
+                    <div class="cow-row-name">${c.name || "Unnamed"}</div>
+                    <div class="cow-row-tag">Tag: ${c.tag_number}</div>
+                </td>
+                <td>${c.breed || "—"}</td>
+                <td><span class="badge badge-${c.status}">${c.status}</span></td>
+            </tr>
+        `).join("");
+    }
+
+    // ── Load AI insights ──────────────────────
+    async function loadInsights() {
+        const res = await apiFetch("/api/dashboard/insights");
+        const data = await res.json();
+        const el = document.getElementById("ai-insights-list");
+
+        if (!data.length) return;
+
+        el.innerHTML = data.map(item => `
+            <div class="ai-box">
+                <div class="ai-box-cow">🐄 ${item.cow_name} — ${formatDate(item.recorded_at)}</div>
+                <div class="ai-box-text">${item.ai_diagnosis}</div>
+            </div>
+        `).join("");
+    }
+
+    // ── Run everything ────────────────────────
+    loadStats();
+    loadMilkSummary();
+    loadMilkChart();
+    loadAlerts();
+    loadCows();
+    loadInsights();
+</script>
+{% endblock %}
