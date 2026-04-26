@@ -21,6 +21,9 @@ app = Flask(__name__)
 VIDEO_FEEDS_DIR = os.path.join(os.path.dirname(__file__), "static", "video_feeds")
 os.makedirs(VIDEO_FEEDS_DIR, exist_ok=True)
 
+PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "static", "cow_photos")
+os.makedirs(PHOTOS_DIR, exist_ok=True)
+
 # ── Database ──────────────────────────────────────
 app.config["SQLALCHEMY_DATABASE_URI"]    = os.getenv("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -124,6 +127,7 @@ class Cow(db.Model):
     status        = db.Column(db.String(30), default="healthy")
     notes         = db.Column(db.Text)
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    photo_filename = db.Column(db.String(200), nullable=True)
     
     def to_dict(self):
         return {
@@ -133,7 +137,8 @@ class Cow(db.Model):
             "breed":      self.breed,
             "status":     self.status,
             "notes":      self.notes,
-            "created_at": self.created_at.isoformat()
+            "created_at": self.created_at.isoformat(),
+            "photo_filename": self.photo_filename,
         }
 
 class VideoFeed(db.Model):
@@ -532,6 +537,18 @@ def update_cow(cow_id):
 def delete_cow(cow_id):
     user_id = int(get_jwt_identity())
     cow     = Cow.query.filter_by(id=cow_id, user_id=user_id).first_or_404()
+    
+    HealthRecord.query.filter_by(cow_id=cow_id).delete()
+    MilkRecord.query.filter_by(cow_id=cow_id).delete()
+    Alert.query.filter_by(cow_id=cow_id).delete()
+    VideoFeed.query.filter_by(cow_id=cow_id).delete()
+
+    # ── Delete photo file if exists ───────────
+    if cow.photo_filename:
+        filepath = os.path.join(PHOTOS_DIR, cow.photo_filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
     db.session.delete(cow)
     db.session.commit()
     return jsonify({"message": f"Cow {cow.tag_number} deleted"}), 200
@@ -1077,6 +1094,29 @@ def dashboard_insights():
         "ai_diagnosis": record.ai_diagnosis,
         "recorded_at":  record.recorded_at.isoformat()
     } for record, cow in records]), 200
+    
+    
+    
+@app.route("/api/cows/<int:cow_id>/photo", methods=["POST"])
+@jwt_required()
+def upload_cow_photo(cow_id):
+    user_id = int(get_jwt_identity())
+    cow     = Cow.query.filter_by(id=cow_id, user_id=user_id).first_or_404()
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file"}), 400
+
+    file = request.files["file"]
+    if not allowed_file(file.filename, ALLOWED_IMAGES):
+        return jsonify({"error": "Images only"}), 400
+
+    import uuid
+    filename = f"{user_id}_{cow_id}_{uuid.uuid4().hex}.jpg"
+    file.save(os.path.join(PHOTOS_DIR, filename))
+
+    cow.photo_filename = filename
+    db.session.commit()
+    return jsonify(cow.to_dict()), 200
 
 
 

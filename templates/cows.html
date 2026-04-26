@@ -54,6 +54,7 @@
         border: 1px solid var(--border);
         transition: box-shadow 0.2s, transform 0.2s;
         cursor: pointer;
+        overflow: hidden;
     }
 
     .cow-card:hover {
@@ -293,6 +294,36 @@
         color: var(--green-dark);
         font-weight: 500;
     }
+
+    .cow-card-photo {
+    width: auto;
+    min-height: 160px;
+    max-height: 320px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    overflow: hidden;
+    margin: -20px -20px 16px -20px;  /* bleed to card edges */
+    
+}
+
+.cow-card-photo img {
+    width: 100%;
+    height: auto;
+    object-fit: unset;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.cow-card:hover .cow-card-photo img {
+    transform: scale(1.04);  /* subtle zoom on hover */
+}
+
+.cow-card-photo-placeholder {
+    background: var(--green-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 52px;
+}
 </style>
 {% endblock %}
 
@@ -333,10 +364,7 @@
             <label>Breed</label>
             <input type="text" id="add-breed" placeholder="e.g. Friesian">
         </div>
-        <div class="form-group">
-            <label>Date of Birth</label>
-            <input type="date" id="add-dob">
-        </div>
+       
         <div class="form-group">
             <label>Status</label>
             <select id="add-status">
@@ -347,46 +375,110 @@
         </div>
        <div class="form-group">
             <label>Notes</label>
-            <textarea id="health-notes" rows="2"
+            <textarea id="add-cow-notes" rows="2"
                 placeholder="Describe what you observed..."
                 style="resize:vertical;"></textarea>
         </div>
 
-        <!-- ── Media upload ───────────────────── -->
+        
+        <!-- ── Photo upload ───────────────────── -->
         <div class="form-group">
-            <label>Upload Photo or Video (optional)</label>
+            <label>Cow Photo (optional)</label>
             <div class="upload-area" id="upload-area"
                 onclick="document.getElementById('media-file').click()">
                 <div class="upload-icon">📷</div>
-                <div class="upload-text">
-                    Tap to upload a photo or video of the cow
-                </div>
-                <div class="upload-sub">
-                    JPG, PNG, MP4, MOV up to 50MB
-                </div>
+                <div class="upload-text">Tap to upload a photo of the cow</div>
+                <div class="upload-sub">JPG, PNG, WEBP up to 10MB</div>
             </div>
             <input type="file" id="media-file"
-                accept="image/*,video/*"
+                accept="image/*"
                 style="display:none"
                 onchange="handleMediaSelect(this)">
-            <div class="upload-preview" id="upload-preview"
-                style="display:none">
+            <div class="upload-preview" id="upload-preview" style="display:none">
                 <span id="upload-filename"></span>
                 <button onclick="clearMedia()"
                     style="background:none;border:none;
-                    color:var(--red);cursor:pointer;
-                    font-size:16px;">✕</button>
+                           color:var(--red);cursor:pointer;font-size:16px;">✕</button>
             </div>
-        </div>
-
-      <div class="loading-spinner" id="add-cow-loading" style="display:none;">
-    🔄 Saving...
-       </div>
-
+            <img id="photo-preview-img"
+                style="display:none;margin-top:10px;width:100%;
+                       height:220px;object-fit:contain;
+                       border-radius:var(--radius-sm);
+                       border:1px solid var(--border);
+                       background:#f5f5f5;">
+        </div>  
        <div class="modal-actions">
           <button class="btn btn-secondary" onclick="closeModal('modal-add-cow')">Cancel</button>
          <button class="btn btn-primary" onclick="submitAddCow()">Add Cow</button>
     </div>
+    </div>
+</div>
+
+<!-- ══ EDIT COW MODAL ════════════════════════════ -->
+<div class="modal-overlay" id="modal-edit-cow">
+    <div class="modal">
+        <div class="modal-title">✏️ Edit Cow</div>
+        <input type="hidden" id="edit-cow-id">
+
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="edit-name" placeholder="e.g. Daisy">
+        </div>
+        <div class="form-group">
+            <label>Breed</label>
+            <input type="text" id="edit-breed" placeholder="e.g. Friesian">
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select id="edit-status">
+                <option value="healthy">Healthy</option>
+                <option value="sick">Sick</option>
+                <option value="pregnant">Pregnant</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea id="edit-notes" rows="2"
+                style="resize:vertical;"></textarea>
+        </div>
+
+        <!-- Photo upload -->
+        <div class="form-group">
+            <label>Update Photo</label>
+            <div class="upload-area" id="edit-upload-area"
+                onclick="document.getElementById('edit-photo-file').click()">
+                <div class="upload-icon">📷</div>
+                <div class="upload-text">Tap to upload or replace photo</div>
+                <div class="upload-sub">JPG, PNG, WEBP up to 10MB</div>
+            </div>
+            <input type="file" id="edit-photo-file"
+                accept="image/*"
+                style="display:none"
+                onchange="handleEditPhotoSelect(this)">
+            <div class="upload-preview" id="edit-upload-preview" style="display:none">
+                <span id="edit-upload-filename"></span>
+                <button onclick="clearEditPhoto()"
+                    style="background:none;border:none;
+                           color:var(--red);cursor:pointer;font-size:16px;">✕</button>
+            </div>
+            <!-- Shows existing or newly selected photo -->
+            <img id="edit-photo-preview"
+                style="display:none;margin-top:10px;width:100%;
+                       height:220px;object-fit:contain;
+                       border-radius:var(--radius-sm);
+                       border:1px solid var(--border);
+                       background: #f5f5f5;">
+        </div>
+
+        <div class="loading-spinner" id="edit-cow-loading" style="display:none;">
+            🔄 Saving...
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-secondary"
+                onclick="closeModal('modal-edit-cow')">Cancel</button>
+            <button class="btn btn-primary" onclick="submitEditCow()">Save Changes</button>
+        </div>
     </div>
 </div>
 
@@ -507,6 +599,7 @@
     let selectedSession = "morning";
     let selectedMedia   = null;
     let mediaType       = null;
+    let editPhotoFile   = null; 
 
     // ── Load all cows ─────────────────────────
     async function loadCows() {
@@ -515,7 +608,7 @@
         renderCows(allCows);
     }
 
-    function renderCows(cows) {
+    function renderCows(cows) { 
         const grid = document.getElementById("cow-grid");
 
         if (!cows.length) {
@@ -527,27 +620,41 @@
             return;
         }
 
-        grid.innerHTML = cows.map(cow => `
-            <div class="cow-card">
-                <div class="cow-card-header">
-                    <div class="cow-avatar">🐄</div>
-                    <span class="badge badge-${cow.status}">${cow.status}</span>
-                </div>
+           grid.innerHTML = cows.map(cow => `
+    <div class="cow-card">
+        
+        <!-- Photo at the top of the card -->
+        ${cow.photo_filename
+            ? `<div class="cow-card-photo">
+                    <img src="/static/cow_photos/${cow.photo_filename}"
+                        alt="${cow.name || cow.tag_number}">
+               </div>`
+            : `<div class="cow-card-photo cow-card-photo-placeholder">
+                    <span>🐄</span>
+               </div>`
+        }
+
+        <div class="cow-card-header">
+            <div>
                 <div class="cow-card-name">${cow.name || "Unnamed"}</div>
                 <div class="cow-card-tag">Tag: ${cow.tag_number}</div>
-                <div class="cow-card-detail">
-                    <span>Breed<strong>${cow.breed || "—"}</strong></span>
-                    <span>Added<strong>${formatDate(cow.created_at)}</strong></span>
-                </div>
-                <div class="cow-actions">
-                    <button onclick="openHealth(${cow.id}, '${cow.name || cow.tag_number}')">🩺 Health</button>
-                    <button onclick="openMilk(${cow.id}, '${cow.name || cow.tag_number}')">🥛 Milk</button>
-                    <button class="danger" onclick="deleteCow(${cow.id}, '${cow.tag_number}')">🗑</button>
-                </div>
             </div>
-        `).join("");
-    }
+            <span class="badge badge-${cow.status}">${cow.status}</span>
+        </div>
 
+        <div class="cow-card-detail">
+            <span>Breed<strong>${cow.breed || "—"}</strong></span>
+            <span>Added<strong>${formatDate(cow.created_at)}</strong></span>
+        </div>
+        <div class="cow-actions">
+            <button onclick="openHealth(${cow.id}, '${cow.name || cow.tag_number}')">🩺 Health</button>
+            <button onclick="openMilk(${cow.id}, '${cow.name || cow.tag_number}')">🥛 Milk</button>
+            <button onclick="openEditCow(${cow.id})">✏️ Edit</button>
+            <button class="danger" onclick="deleteCow(${cow.id}, '${cow.tag_number}')">🗑</button>
+        </div>
+    </div>
+`).join("");
+    }
     // ── Search filter ─────────────────────────
     function filterCows() {
         const q = document.getElementById("search-input").value.toLowerCase();
@@ -579,30 +686,53 @@
         openModal("modal-add-cow");
     }
 
-    async function submitAddCow() {
-        const tag = document.getElementById("add-tag").value.trim();
-        if (!tag) { alert("Tag number is required"); return; }
+   async function submitAddCow() {
+    const tag = document.getElementById("add-tag").value.trim();
+    if (!tag) { alert("Tag number is required"); return; }
 
-        const res = await apiFetch("/api/cows", {
-            method: "POST",
-            body: JSON.stringify({
-                tag_number:    tag,
-                name:          document.getElementById("add-name").value.trim(),
-                breed:         document.getElementById("add-breed").value.trim(),
-                date_of_birth: document.getElementById("add-dob").value || null,
-                status:        document.getElementById("add-status").value,
-                notes:         document.getElementById("health-notes").value.trim()
-            })
-        });
+    const loading = document.getElementById("add-cow-loading");
+    if (loading) loading.style.display = "block";
 
-        if (res.ok) {
-            closeModal("modal-add-cow");
-            loadCows();
-        } else {
-            const data = await res.json();
-            alert(data.error || "Failed to add cow");
+    const res = await apiFetch("/api/cows", {
+        method: "POST",
+        body: JSON.stringify({
+            tag_number: tag,
+            name:       document.getElementById("add-name").value.trim(),
+            breed:      document.getElementById("add-breed").value.trim(),
+            status:     document.getElementById("add-status").value,
+            notes:      document.getElementById("add-cow-notes").value.trim()
+        })
+    });
+
+    if (res.ok) {
+        const cow = await res.json();
+
+        // ✅ Only one upload call, correct URL
+        if (selectedMedia && mediaType === "image") {
+            const formData = new FormData();
+            formData.append("file", selectedMedia);
+            try {
+                await fetch(`/api/cows/${cow.id}/photo`, {
+                    method:  "POST",
+                    headers: { "Authorization": "Bearer " + getToken() },
+                    body:    formData
+                });
+            } catch (err) {
+                console.error("Photo upload failed:", err);
+            }
         }
+
+        if (loading) loading.style.display = "none";
+        closeModal("modal-add-cow");
+        clearMedia();
+        loadCows();
+
+    } else {
+        if (loading) loading.style.display = "none";
+        const data = await res.json();
+        alert(data.error || "Failed to add cow");
     }
+}
 
     // ── Health log ────────────────────────────
     function openHealth(cowId, cowName) {
@@ -693,7 +823,101 @@
             btn.textContent = "Analyze & Save";
             alert("Failed to save health record");
         }
+    }   
+
+    
+
+function openEditCow(cowId) {
+    const cow = allCows.find(c => c.id === cowId);
+    if (!cow) return;
+
+    document.getElementById("edit-cow-id").value  = cowId;
+    document.getElementById("edit-name").value    = cow.name || "";
+    document.getElementById("edit-breed").value   = cow.breed || "";
+    document.getElementById("edit-status").value  = cow.status || "healthy";
+    document.getElementById("edit-notes").value   = cow.notes || "";
+
+    // Show existing photo if available
+    const preview = document.getElementById("edit-photo-preview");
+    if (cow.photo_filename) {
+        preview.src           = `/static/cow_photos/${cow.photo_filename}`;
+        preview.style.display = "block";
+    } else {
+        preview.style.display = "none";
+        preview.src           = "";
     }
+
+    clearEditPhoto();
+    openModal("modal-edit-cow");
+}
+
+async function submitEditCow() {
+    const cowId  = document.getElementById("edit-cow-id").value;
+    const loading = document.getElementById("edit-cow-loading");
+    loading.style.display = "block";
+
+    // Save text fields
+    const res = await apiFetch(`/api/cows/${cowId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+            name:   document.getElementById("edit-name").value.trim(),
+            breed:  document.getElementById("edit-breed").value.trim(),
+            status: document.getElementById("edit-status").value,
+            notes:  document.getElementById("edit-notes").value.trim()
+        })
+    });
+
+    if (res.ok) {
+        // Upload new photo if one was selected
+        if (editPhotoFile) {
+            const formData = new FormData();
+            formData.append("file", editPhotoFile);
+            try {
+                await fetch(`/api/cows/${cowId}/photo`, {
+                    method:  "POST",
+                    headers: { "Authorization": "Bearer " + getToken() },
+                    body:    formData
+                });
+            } catch (err) {
+                console.error("Photo upload failed:", err);
+            }
+        }
+
+        loading.style.display = "none";
+        closeModal("modal-edit-cow");
+        clearEditPhoto();
+        loadCows();
+
+    } else {
+        loading.style.display = "none";
+        const data = await res.json();
+        alert(data.error || "Failed to update cow");
+    }
+}
+
+function handleEditPhotoSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    editPhotoFile = file;
+
+    document.getElementById("edit-upload-filename").textContent = `📷 ${file.name}`;
+    document.getElementById("edit-upload-preview").style.display = "flex";
+    document.getElementById("edit-upload-area").style.display    = "none";
+
+    // Preview the new photo
+    const preview     = document.getElementById("edit-photo-preview");
+    preview.src       = URL.createObjectURL(file);
+    preview.style.display = "block";
+}
+
+function clearEditPhoto() {
+    editPhotoFile = null;
+    const input = document.getElementById("edit-photo-file");
+    if (input) input.value = "";
+    document.getElementById("edit-upload-preview").style.display = "none";
+    document.getElementById("edit-upload-area").style.display    = "block";
+}
 
     // ── Media upload helpers ──────────────────
     function handleMediaSelect(input) {
@@ -707,6 +931,11 @@
             `${mediaType === "video" ? "🎥" : "📷"} ${file.name}`;
         document.getElementById("upload-preview").style.display = "flex";
         document.getElementById("upload-area").style.display    = "none";
+
+
+        const preview = document.getElementById("photo-preview-img");
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
     }
 
     function clearMedia() {
@@ -715,6 +944,8 @@
         document.getElementById("media-file").value             = "";
         document.getElementById("upload-preview").style.display = "none";
         document.getElementById("upload-area").style.display    = "block";
+        document.getElementById("photo-preview-img").style.display = "none";    
+        document.getElementById("photo-preview-img").src = "";
     }
 
     // ── Milk log ──────────────────────────────
