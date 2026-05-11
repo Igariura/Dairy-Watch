@@ -1,12 +1,18 @@
+import os
 import pytest
+
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["JWT_SECRET_KEY"] = "test-secret-key"
+os.environ["MAIL_USERNAME"] = "test@example.com"
+os.environ["MAIL_PASSWORD"] = "test-password"
+os.environ["MAIL_DEFAULT_SENDER"] = "test@example.com"
+
 from app import app, db
 
 
 @pytest.fixture
 def client():
-    app.config["TESTING"]               = True
-    app.config["SQLALCHEMY_DATABASE_URI"] = \
-        "postgresql://dairywatch_user:dairywatch_pass@localhost:5432/dairywatch_test"
+    app.config["TESTING"] = True
 
     with app.test_client() as client:
         with app.app_context():
